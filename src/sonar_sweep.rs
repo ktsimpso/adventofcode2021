@@ -4,6 +4,7 @@ use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
 
 pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", run);
 
+#[derive(Debug)]
 struct SonarSweepArgs {
     file: String,
     sample_size: usize,

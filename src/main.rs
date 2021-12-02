@@ -2,6 +2,7 @@
 
 mod lib;
 mod sonar_sweep;
+mod dive;
 
 use anyhow::Error;
 use clap::{App, AppSettings};
@@ -11,7 +12,8 @@ use std::collections::HashMap;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const COMMANDS: &'static [Command] = &[
-    sonar_sweep::SONAR_SWEEP
+    sonar_sweep::SONAR_SWEEP,
+    dive::DIVE
 ];
 
 fn main() -> Result<(), Error> {

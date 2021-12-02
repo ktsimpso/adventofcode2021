@@ -1,9 +1,15 @@
 #![feature(const_fn_fn_ptr_basics)]
 
 use anyhow::Error;
-use clap::{App, ArgMatches, SubCommand, AppSettings, Arg};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+use nom::{
+    character::complete::digit1,
+    combinator::{map_res},
+    IResult,
+};
 
 pub struct Command<'a> {
     sub_command: fn() -> App<'static, 'static>,
@@ -84,4 +90,12 @@ where
                 parsed_lines
             })
         })
+}
+
+pub fn parse_usize(input: &str) -> IResult<&str, usize> {
+    map_res(digit1, usisze_from_string)(input)
+}
+
+fn usisze_from_string(input: &str) -> Result<usize, Error> {
+    usize::from_str_radix(input, 10).map_err(|err| err.into())
 }
