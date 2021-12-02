@@ -55,23 +55,23 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
         .and_then(|lines| {
             parse_lines(lines, |line| line.parse::<isize>()).map_err(|err| err.into())
         })
-        .and_then(|lines| aggregate_samples(&lines, &sonar_arguments.sample_size))
-        .and_then(|lines| count_increases(&lines))
+        .map(|lines| aggregate_samples(&lines, &sonar_arguments.sample_size))
+        .map(count_increases)
         .map(|result| {
             println!("{:#?}", result);
         })
         .map(|_| ())
 }
 
-fn aggregate_samples(input: &Vec<isize>, sample_size: &usize) -> Result<Vec<isize>, Error> {
-    Ok(input
+fn aggregate_samples(input: &Vec<isize>, sample_size: &usize) -> Vec<isize> {
+    input
         .windows(*sample_size)
         .map(|window| window.into_iter().fold(0, |acc, number| acc + number))
-        .collect())
+        .collect()
 }
 
-fn count_increases(input: &Vec<isize>) -> Result<isize, Error> {
-    Ok(input.windows(2).fold(
+fn count_increases(input: Vec<isize>) -> isize {
+    input.windows(2).fold(
         0,
         |sum, window| {
             if window[1] > window[0] {
@@ -80,5 +80,5 @@ fn count_increases(input: &Vec<isize>) -> Result<isize, Error> {
                 sum
             }
         },
-    ))
+    )
 }
