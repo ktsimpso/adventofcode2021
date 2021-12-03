@@ -2,14 +2,10 @@
 
 use anyhow::Error;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use nom::{character::complete::digit1, combinator::map_res, IResult};
+use simple_error::SimpleError;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-
-use nom::{
-    character::complete::digit1,
-    combinator::{map_res},
-    IResult,
-};
 
 pub struct Command<'a> {
     sub_command: fn() -> App<'static, 'static>,
@@ -90,6 +86,17 @@ where
                 parsed_lines
             })
         })
+}
+
+pub fn complete_parsing<T, U, F>(mut parse_function: F) -> impl FnMut(&T) -> Result<U, Error>
+where
+    F: FnMut(&T) -> IResult<&str, U>,
+{
+    move |t| -> Result<U, Error> {
+        parse_function(t)
+            .map_err(|_: nom::Err<nom::error::Error<&str>>| SimpleError::new("Parse Error").into())
+            .map(|(_, result)| result)
+    }
 }
 
 pub fn parse_usize(input: &str) -> IResult<&str, usize> {

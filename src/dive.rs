@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use crate::lib::{default_sub_command, file_to_lines, parse_lines, parse_usize, Command};
+use crate::lib::{
+    complete_parsing, default_sub_command, file_to_lines, parse_lines, parse_usize, Command,
+};
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
 use nom::{
@@ -8,8 +10,8 @@ use nom::{
     character::complete,
     combinator::{map, map_res},
     sequence::separated_pair,
+    IResult,
 };
-use simple_error::SimpleError;
 use strum_macros::{EnumString, EnumVariantNames};
 
 pub const DIVE: Command = Command::new(sub_command, "dive", run);
@@ -74,7 +76,7 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
     };
 
     file_to_lines(&dive_arguments.file)
-        .and_then(|lines| parse_lines(lines, parse_commands))
+        .and_then(|lines| parse_lines(lines, complete_parsing(parse_commands)))
         .map(|commands| determine_position(&commands, &dive_arguments.use_aim))
         .map(|(horizontal, depth)| horizontal * depth)
         .map(|result| {
@@ -83,7 +85,7 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
         .map(|_| ())
 }
 
-fn parse_commands(line: &String) -> Result<SubmarineCommand, Error> {
+fn parse_commands(line: &String) -> IResult<&str, SubmarineCommand> {
     map(
         separated_pair(
             map_res(complete::alpha1, Direction::from_str),
@@ -95,8 +97,6 @@ fn parse_commands(line: &String) -> Result<SubmarineCommand, Error> {
             magnitude,
         },
     )(line)
-    .map_err(|_: nom::Err<nom::error::Error<&str>>| SimpleError::new("Parse Error").into())
-    .map(|(_, command)| command)
 }
 
 fn determine_position(commands: &Vec<SubmarineCommand>, use_aim: &bool) -> (usize, usize) {
