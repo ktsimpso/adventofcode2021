@@ -4,20 +4,46 @@ use anyhow::Error;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use nom::{character::complete::digit1, combinator::map_res, IResult};
 use simple_error::SimpleError;
+use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
+pub enum CommandResult {
+    Isize(isize),
+    Usize(usize),
+}
+
+impl fmt::Debug for CommandResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CommandResult::Isize(val) => val.fmt(f),
+            CommandResult::Usize(val) => val.fmt(f),
+        }
+    }
+}
+
+impl From<isize> for CommandResult {
+    fn from(item: isize) -> Self {
+        CommandResult::Isize(item)
+    }
+}
+
+impl From<usize> for CommandResult {
+    fn from(item: usize) -> Self {
+        CommandResult::Usize(item)
+    }
+}
 pub struct Command<'a> {
     sub_command: fn() -> App<'static, 'static>,
     name: &'a str,
-    run: fn(&ArgMatches) -> Result<(), Error>,
+    run: fn(&ArgMatches) -> Result<CommandResult, Error>,
 }
 
 impl Command<'_> {
     pub const fn new<'a>(
         sub_command: fn() -> App<'static, 'static>,
         name: &'a str,
-        run: fn(&ArgMatches) -> Result<(), Error>,
+        run: fn(&ArgMatches) -> Result<CommandResult, Error>,
     ) -> Command<'a> {
         Command {
             sub_command: sub_command,
@@ -34,7 +60,7 @@ impl Command<'_> {
         self.name
     }
 
-    pub fn run(&self, arguments: &ArgMatches) -> Result<(), Error> {
+    pub fn run(&self, arguments: &ArgMatches) -> Result<CommandResult, Error> {
         (self.run)(arguments)
     }
 }
@@ -43,6 +69,8 @@ pub fn default_sub_command(
     command: &Command,
     about: &'static str,
     file_help: &'static str,
+    part1_docs: &'static str,
+    part2_docs: &'static str,
 ) -> App<'static, 'static> {
     SubCommand::with_name(command.name())
         .about(about)
@@ -55,6 +83,16 @@ pub fn default_sub_command(
                 .help(file_help)
                 .takes_value(true)
                 .required(true),
+        )
+        .subcommand(
+            SubCommand::with_name("part1")
+                .about(part1_docs)
+                .version("1.0.0"),
+        )
+        .subcommand(
+            SubCommand::with_name("part2")
+                .about(part2_docs)
+                .version("1.0.0"),
         )
 }
 

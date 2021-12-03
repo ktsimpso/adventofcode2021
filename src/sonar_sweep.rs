@@ -1,6 +1,6 @@
-use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command};
+use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command, CommandResult};
 use anyhow::Error;
-use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 
 pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", run);
 
@@ -15,6 +15,8 @@ fn sub_command() -> App<'static, 'static> {
         &SONAR_SWEEP,
         "Counts every time the number in the input increases between each sample",
         "Path to the input file. Input should be newline delimited integers.",
+        "Searches the default input with a sample size of 1.",
+        "Searches the default input with a sample size of 3.",
     )
     .arg(
         Arg::with_name("sample")
@@ -23,19 +25,9 @@ fn sub_command() -> App<'static, 'static> {
             .takes_value(true)
             .required(true),
     )
-    .subcommand(
-        SubCommand::with_name("part1")
-            .about("Searches the default input with a sample size of 1.")
-            .version("1.0.0"),
-    )
-    .subcommand(
-        SubCommand::with_name("part2")
-            .about("Searches the default input with a sample size of 3.")
-            .version("1.0.0"),
-    )
 }
 
-fn run(arguments: &ArgMatches) -> Result<(), Error> {
+fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
     let sonar_arguments = match arguments.subcommand_name() {
         Some("part1") => SonarSweepArgs {
             file: "day1_sonar_sweep/input.txt".to_string(),
@@ -57,10 +49,7 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
         })
         .map(|lines| aggregate_samples(&lines, &sonar_arguments.sample_size))
         .map(count_increases)
-        .map(|result| {
-            println!("{:#?}", result);
-        })
-        .map(|_| ())
+        .map(CommandResult::from)
 }
 
 fn aggregate_samples(input: &Vec<isize>, sample_size: &usize) -> Vec<isize> {

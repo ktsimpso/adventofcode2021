@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use crate::lib::{
     complete_parsing, default_sub_command, file_to_lines, parse_lines, parse_usize, Command,
+    CommandResult,
 };
 use anyhow::Error;
-use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag,
     character::complete,
@@ -12,6 +11,7 @@ use nom::{
     sequence::separated_pair,
     IResult,
 };
+use std::str::FromStr;
 use strum_macros::{EnumString, EnumVariantNames};
 
 pub const DIVE: Command = Command::new(sub_command, "dive", run);
@@ -41,25 +41,17 @@ fn sub_command() -> App<'static, 'static> {
         &DIVE,
         "Finds the final position of the sub starting at 0,0 then returns the multiple of the tuple.",
         "Path to the input file. Each line should contain a direction followed by a number.",
+        "Finds the postion for the default input without aim.",
+        "Finds the postion for the default input with aim.",
     )
     .arg(
         Arg::with_name("aim")
         .short("a")
         .help("If passed, takes submarine aim into account when determining position.")
     )
-    .subcommand(
-        SubCommand::with_name("part1")
-            .about("Finds the postion for the default input without aim.")
-            .version("1.0.0"),
-    )
-    .subcommand(
-        SubCommand::with_name("part2")
-            .about("Finds the postion for the default input with aim.")
-            .version("1.0.0"),
-    )
 }
 
-fn run(arguments: &ArgMatches) -> Result<(), Error> {
+fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
     let dive_arguments = match arguments.subcommand_name() {
         Some("part1") => DiveArgs {
             file: "day2_dive/input.txt".to_string(),
@@ -79,10 +71,7 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
         .and_then(|lines| parse_lines(lines, complete_parsing(parse_commands)))
         .map(|commands| determine_position(&commands, &dive_arguments.use_aim))
         .map(|(horizontal, depth)| horizontal * depth)
-        .map(|result| {
-            println!("{:#?}", result);
-        })
-        .map(|_| ())
+        .map(CommandResult::from)
 }
 
 fn parse_commands(line: &String) -> IResult<&str, SubmarineCommand> {

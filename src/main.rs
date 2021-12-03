@@ -1,15 +1,15 @@
 #![feature(const_fn_fn_ptr_basics)]
 
+mod binary_diagnostic;
+mod dive;
 mod lib;
 mod sonar_sweep;
-mod dive;
-mod binary_diagnostic;
 
 use anyhow::Error;
 use clap::{App, AppSettings};
 use lib::Command;
 use simple_error::SimpleError;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const COMMANDS: &'static [Command] = &[
@@ -42,6 +42,10 @@ fn main() -> Result<(), Error> {
                 println!("=============Running {:}=============", command.name());
                 command.run(args)
             })
+            .map(|result| {
+                println!("{:#?}", result);
+            })
+            .map(|_| ())
     } else {
         Err(SimpleError::new("No arguments found").into())
     }

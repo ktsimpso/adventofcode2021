@@ -1,6 +1,6 @@
-use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command};
+use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command, CommandResult};
 use anyhow::Error;
-use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use std::convert::identity;
 use std::ops::{BitAnd, BitOr};
 use strum::VariantNames;
@@ -32,6 +32,8 @@ fn sub_command() -> App<'static, 'static> {
         &BINARY_DIAGNOSTIC,
         "Parses the binary to find diagnotics",
         "Path to the input file. Each line should contain a binary number.",
+        "Finds power consumption.",
+        "Finds the life support rating",
     )
     .arg(
         Arg::with_name("diagnostic")
@@ -43,19 +45,9 @@ fn sub_command() -> App<'static, 'static> {
             .possible_values(&Diagnostic::VARIANTS)
             .required(true),
     )
-    .subcommand(
-        SubCommand::with_name("part1")
-            .about("Finds power consumption.")
-            .version("1.0.0"),
-    )
-    .subcommand(
-        SubCommand::with_name("part2")
-            .about("Finds the life support rating")
-            .version("1.0.0"),
-    )
 }
 
-fn run(arguments: &ArgMatches) -> Result<(), Error> {
+fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
     let binary_arguments = match arguments.subcommand_name() {
         Some("part1") => BinaryDiagnosticArgs {
             file: "day3_binary_diagnostic/input.txt".to_string(),
@@ -78,10 +70,7 @@ fn run(arguments: &ArgMatches) -> Result<(), Error> {
             Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
         })
         .map(|(metric1, metric2)| metric1 * metric2)
-        .map(|result| {
-            println!("{:#?}", result);
-        })
-        .map(|_| ())
+        .map(CommandResult::from)
 }
 
 fn parse_binary(line: &String) -> Result<Binary, Error> {
