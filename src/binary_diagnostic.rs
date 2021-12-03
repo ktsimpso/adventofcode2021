@@ -1,16 +1,30 @@
-use std::{ops::BitOr};
-
-use crate::lib::{
-    default_sub_command, file_to_lines, parse_lines, Command,
-};
+use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command};
 use anyhow::Error;
-use clap::{value_t_or_exit, App, ArgMatches, SubCommand};
+use clap::{value_t_or_exit, App, Arg, ArgMatches, SubCommand};
+use std::convert::identity;
+use std::ops::{BitAnd, BitOr};
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const BINARY_DIAGNOSTIC: Command = Command::new(sub_command, "binary-diagnostic", run);
 
 #[derive(Debug)]
 struct BinaryDiagnosticArgs {
     file: String,
+    diagnostic: Diagnostic,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum Diagnostic {
+    PowerConsumption,
+    LifeSupport,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Binary {
+    bits: usize,
+    significant_bits: u32,
 }
 
 fn sub_command() -> App<'static, 'static> {
@@ -19,86 +33,142 @@ fn sub_command() -> App<'static, 'static> {
         "Parses the binary to find diagnotics",
         "Path to the input file. Each line should contain a binary number.",
     )
+    .arg(
+        Arg::with_name("diagnostic")
+            .short("d")
+            .help("The diagnostic requested. The diagnostics available are as follows:\n\n\
+            power-consumption: Finds the gamma rate and the epsilon rate and multiplies them.\n\n\
+            life-support: Finds the oxygen rating and the CO2 scrubber rating and multiplies them.\n\n")
+            .takes_value(true)
+            .possible_values(&Diagnostic::VARIANTS)
+            .required(true),
+    )
     .subcommand(
         SubCommand::with_name("part1")
-            .about("Finds gamma and the epsilon and multiplys them together")
+            .about("Finds power consumption.")
             .version("1.0.0"),
     )
-    /*.subcommand(
+    .subcommand(
         SubCommand::with_name("part2")
-            .about("I will find out")
+            .about("Finds the life support rating")
             .version("1.0.0"),
-    )*/
+    )
 }
 
 fn run(arguments: &ArgMatches) -> Result<(), Error> {
-    let d3_arguments = match arguments.subcommand_name() {
+    let binary_arguments = match arguments.subcommand_name() {
         Some("part1") => BinaryDiagnosticArgs {
             file: "day3_binary_diagnostic/input.txt".to_string(),
+            diagnostic: Diagnostic::PowerConsumption,
         },
         Some("part2") => BinaryDiagnosticArgs {
             file: "day3_binary_diagnostic/input.txt".to_string(),
+            diagnostic: Diagnostic::LifeSupport,
         },
         _ => BinaryDiagnosticArgs {
             file: value_t_or_exit!(arguments.value_of("file"), String),
+            diagnostic: value_t_or_exit!(arguments.value_of("diagnostic"), Diagnostic),
         },
     };
 
-    file_to_lines(&d3_arguments.file)
+    file_to_lines(&binary_arguments.file)
         .and_then(|lines| parse_lines(lines, parse_binary))
-        .map(|binary| (find_gamma(&binary), find_epsilon(&binary)))
-        .map(|(gamma, epsilon)| gamma * epsilon)
+        .map(|binary| match binary_arguments.diagnostic {
+            Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),
+            Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
+        })
+        .map(|(metric1, metric2)| metric1 * metric2)
         .map(|result| {
             println!("{:#?}", result);
         })
         .map(|_| ())
 }
 
-fn parse_binary(line: &String) -> Result<Vec<isize>, Error> {
-    Ok(line
-        .as_bytes()
-        .into_iter()
-        .map(|character| match character {
-            49u8 => 1, // '1' in u8
-            _ => -1,
+fn parse_binary(line: &String) -> Result<Binary, Error> {
+    usize::from_str_radix(line, 2)
+        .map_err(|e| e.into())
+        .and_then(|bits| {
+            line.len()
+                .try_into()
+                .map(|length| Binary {
+                    bits: bits,
+                    significant_bits: length,
+                })
+                .map_err(|e| e.into())
         })
-        .collect())
 }
 
-fn find_gamma(binary: &Vec<Vec<isize>>) -> usize {
-    let length = binary.first().unwrap_or(&Vec::new()).len();
-    binary
+fn most_common_bit_at_position(numbers: &Vec<Binary>, position: u32) -> usize {
+    let mask = 1usize.rotate_left(position);
+    let bits: Vec<usize> = numbers
         .into_iter()
-        .fold(vec![0; length], |accumulator, line| {
-            accumulator
-                .into_iter()
-                .zip(line.into_iter())
-                .map(|(acc, bit)| acc + bit)
-                .collect()
-        })
-        .into_iter()
-        .map(|result| match result {
-            r if r > 0 => 1usize,
-            _ => 0,
-        })
-        .fold(0usize, |acc, bit| acc.rotate_left(1).bitor(bit))
+        .map(|bin| bin.bits)
+        .map(|number| number.bitand(mask))
+        .map(|number| number.rotate_right(position))
+        .collect();
+    let ones = bits.into_iter().filter(|bit| bit == &1usize).count();
+    let zeros = numbers.len() - ones;
+    if ones >= zeros {
+        1
+    } else {
+        0
+    }
 }
 
-fn find_epsilon(binary: &Vec<Vec<isize>>) -> usize {
-    let length = binary.first().unwrap_or(&Vec::new()).len();
-    binary
-        .into_iter()
-        .fold(vec![0; length], |accumulator, line| {
-            accumulator
-                .into_iter()
-                .zip(line.into_iter())
-                .map(|(acc, bit)| acc + bit)
-                .collect()
+fn most_to_least(bit: usize) -> usize {
+    if bit == 1usize {
+        0
+    } else {
+        1
+    }
+}
+
+fn find_gamma(binary: &Vec<Binary>) -> usize {
+    combine_common_bits(binary, identity)
+}
+
+fn find_epsilon(binary: &Vec<Binary>) -> usize {
+    combine_common_bits(binary, most_to_least)
+}
+
+fn combine_common_bits(binary: &Vec<Binary>, convert_function: impl Fn(usize) -> usize) -> usize {
+    let most_significant = binary.first().map(|bin| bin.significant_bits).unwrap_or(0);
+    (0..most_significant)
+        .map(|position| {
+            let common = convert_function(most_common_bit_at_position(binary, position));
+            common.rotate_left(position)
         })
-        .into_iter()
-        .map(|result| match result {
-            r if r > 0 => 0usize,
-            _ => 1usize,
-        })
-        .fold(0usize, |acc, bit| acc.rotate_left(1).bitor(bit))
+        .fold(0usize, |acc, bit| acc.bitor(bit))
+}
+
+fn find_oxygen(binary: &Vec<Binary>) -> usize {
+    filter_by_significant_bits(binary, identity)
+}
+
+fn find_c02(binary: &Vec<Binary>) -> usize {
+    filter_by_significant_bits(binary, most_to_least)
+}
+
+fn filter_by_significant_bits(
+    binary: &Vec<Binary>,
+    convert_function: impl Fn(usize) -> usize,
+) -> usize {
+    let most_significant = binary.first().map(|bin| bin.significant_bits).unwrap_or(0);
+    let mut position = most_significant;
+    let mut filtered_binary = binary.clone();
+
+    while filtered_binary.len() > 1 {
+        position -= 1;
+        let common = convert_function(most_common_bit_at_position(&filtered_binary, position));
+        let mask = 1usize.rotate_left(position);
+        filtered_binary = filtered_binary
+            .into_iter()
+            .filter(|bits| bits.bits.bitand(mask).rotate_right(position) == common)
+            .collect();
+    }
+
+    filtered_binary
+        .first()
+        .map(|bin| bin.bits)
+        .unwrap_or(0usize)
 }
