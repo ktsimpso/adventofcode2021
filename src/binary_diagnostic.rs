@@ -6,11 +6,15 @@ use std::ops::{BitAnd, BitOr};
 use strum::VariantNames;
 use strum_macros::{EnumString, EnumVariantNames};
 
-pub const BINARY_DIAGNOSTIC: Command = Command::new(sub_command, "binary-diagnostic", run);
+pub const BINARY_DIAGNOSTIC: Command = Command::new(
+    sub_command,
+    "binary-diagnostic",
+    "day3_binary_diagnostic",
+    run,
+);
 
 #[derive(Debug)]
 struct BinaryDiagnosticArgs {
-    file: String,
     diagnostic: Diagnostic,
 }
 
@@ -47,23 +51,20 @@ fn sub_command() -> App<'static, 'static> {
     )
 }
 
-fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
+fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
     let binary_arguments = match arguments.subcommand_name() {
         Some("part1") => BinaryDiagnosticArgs {
-            file: "day3_binary_diagnostic/input.txt".to_string(),
             diagnostic: Diagnostic::PowerConsumption,
         },
         Some("part2") => BinaryDiagnosticArgs {
-            file: "day3_binary_diagnostic/input.txt".to_string(),
             diagnostic: Diagnostic::LifeSupport,
         },
         _ => BinaryDiagnosticArgs {
-            file: value_t_or_exit!(arguments.value_of("file"), String),
             diagnostic: value_t_or_exit!(arguments.value_of("diagnostic"), Diagnostic),
         },
     };
 
-    file_to_lines(&binary_arguments.file)
+    file_to_lines(file)
         .and_then(|lines| parse_lines(lines, parse_binary))
         .map(|binary| match binary_arguments.diagnostic {
             Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),

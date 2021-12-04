@@ -6,10 +6,10 @@ mod lib;
 mod sonar_sweep;
 
 use anyhow::Error;
-use clap::{App, AppSettings};
+use clap::{value_t_or_exit, App, AppSettings};
 use lib::Command;
 use simple_error::SimpleError;
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 const COMMANDS: &'static [Command] = &[
@@ -40,7 +40,17 @@ fn main() -> Result<(), Error> {
             .ok_or_else::<Error, _>(|| SimpleError::new("No valid subcommand found").into())
             .and_then(|command| {
                 println!("=============Running {:}=============", command.name());
-                command.run(args)
+                let file = match args.subcommand_name() {
+                    Some("part1") => format!("{}/input.txt", command.folder_name()),
+                    Some("part2") => format!("{}/input.txt", command.folder_name()),
+                    _ => format!(
+                        "{}/{}",
+                        command.folder_name(),
+                        value_t_or_exit!(args.value_of("file"), String)
+                    ),
+                };
+
+                command.run(args, &file)
             })
             .map(|result| {
                 println!("{:#?}", result);

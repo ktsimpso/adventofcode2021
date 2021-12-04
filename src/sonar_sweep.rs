@@ -2,11 +2,10 @@ use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command, Comma
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 
-pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", run);
+pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", "day1_sonar_sweep", run);
 
 #[derive(Debug)]
 struct SonarSweepArgs {
-    file: String,
     sample_size: usize,
 }
 
@@ -27,23 +26,20 @@ fn sub_command() -> App<'static, 'static> {
     )
 }
 
-fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
+fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
     let sonar_arguments = match arguments.subcommand_name() {
         Some("part1") => SonarSweepArgs {
-            file: "day1_sonar_sweep/input.txt".to_string(),
             sample_size: 1,
         },
         Some("part2") => SonarSweepArgs {
-            file: "day1_sonar_sweep/input.txt".to_string(),
             sample_size: 3,
         },
         _ => SonarSweepArgs {
-            file: value_t_or_exit!(arguments.value_of("file"), String),
             sample_size: value_t_or_exit!(arguments.value_of("sample"), usize),
         },
     };
 
-    file_to_lines(&sonar_arguments.file)
+    file_to_lines(file)
         .and_then(|lines| {
             parse_lines(lines, |line| line.parse::<isize>()).map_err(|err| err.into())
         })

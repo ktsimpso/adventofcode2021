@@ -3,7 +3,7 @@ use crate::lib::{
     CommandResult,
 };
 use anyhow::Error;
-use clap::{value_t_or_exit, App, Arg, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag,
     character::complete,
@@ -14,11 +14,10 @@ use nom::{
 use std::str::FromStr;
 use strum_macros::{EnumString, EnumVariantNames};
 
-pub const DIVE: Command = Command::new(sub_command, "dive", run);
+pub const DIVE: Command = Command::new(sub_command, "dive", "day2_dive", run);
 
 #[derive(Debug)]
 struct DiveArgs {
-    file: String,
     use_aim: bool,
 }
 
@@ -51,23 +50,16 @@ fn sub_command() -> App<'static, 'static> {
     )
 }
 
-fn run(arguments: &ArgMatches) -> Result<CommandResult, Error> {
+fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
     let dive_arguments = match arguments.subcommand_name() {
-        Some("part1") => DiveArgs {
-            file: "day2_dive/input.txt".to_string(),
-            use_aim: false,
-        },
-        Some("part2") => DiveArgs {
-            file: "day2_dive/input.txt".to_string(),
-            use_aim: true,
-        },
+        Some("part1") => DiveArgs { use_aim: false },
+        Some("part2") => DiveArgs { use_aim: true },
         _ => DiveArgs {
-            file: value_t_or_exit!(arguments.value_of("file"), String),
             use_aim: arguments.is_present("aim"),
         },
     };
 
-    file_to_lines(&dive_arguments.file)
+    file_to_lines(&file)
         .and_then(|lines| parse_lines(lines, complete_parsing(parse_commands)))
         .map(|commands| determine_position(&commands, &dive_arguments.use_aim))
         .map(|(horizontal, depth)| horizontal * depth)

@@ -36,18 +36,21 @@ impl From<usize> for CommandResult {
 pub struct Command<'a> {
     sub_command: fn() -> App<'static, 'static>,
     name: &'a str,
-    run: fn(&ArgMatches) -> Result<CommandResult, Error>,
+    folder_name: &'a str,
+    run: fn(&ArgMatches, &String) -> Result<CommandResult, Error>,
 }
 
 impl Command<'_> {
     pub const fn new<'a>(
         sub_command: fn() -> App<'static, 'static>,
         name: &'a str,
-        run: fn(&ArgMatches) -> Result<CommandResult, Error>,
+        folder_name: &'a str,
+        run: fn(&ArgMatches, &String) -> Result<CommandResult, Error>,
     ) -> Command<'a> {
         Command {
             sub_command: sub_command,
             name: name,
+            folder_name: folder_name,
             run: run,
         }
     }
@@ -60,8 +63,12 @@ impl Command<'_> {
         self.name
     }
 
-    pub fn run(&self, arguments: &ArgMatches) -> Result<CommandResult, Error> {
-        (self.run)(arguments)
+    pub fn folder_name(&self) -> &str {
+        self.folder_name
+    }
+
+    pub fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
+        (self.run)(arguments, file)
     }
 }
 
