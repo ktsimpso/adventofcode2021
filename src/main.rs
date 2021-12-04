@@ -4,6 +4,7 @@ mod binary_diagnostic;
 mod dive;
 mod lib;
 mod sonar_sweep;
+mod giant_squid;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -16,6 +17,7 @@ const COMMANDS: &'static [Command] = &[
     sonar_sweep::SONAR_SWEEP,
     dive::DIVE,
     binary_diagnostic::BINARY_DIAGNOSTIC,
+    giant_squid::GIANT_SQUID,
 ];
 
 fn main() -> Result<(), Error> {
