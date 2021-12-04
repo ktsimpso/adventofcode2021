@@ -2,7 +2,7 @@ use crate::lib::{
     complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
 };
 use anyhow::Error;
-use clap::{App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::{tag, take_until, take_while},
     combinator::{map, map_parser},
@@ -12,6 +12,11 @@ use nom::{
 };
 
 pub const GIANT_SQUID: Command = Command::new(sub_command, "giant-squid", "day4_giant_squid", run);
+
+#[derive(Debug)]
+struct GiantSquidArgs {
+    squid_win: bool,
+}
 
 #[derive(Debug, Clone)]
 struct BingoGame {
@@ -44,15 +49,27 @@ fn sub_command() -> App<'static, 'static> {
         &GIANT_SQUID,
         "Finds the best bingo board to play",
         "Path to the input file. The numbers to darw in order, followed by a set of boards.",
-        "Finds the best board, sums the uncalled numbers then multiplies that by the number that was called.",
-        "I will find out",
+        "Finds the best board, sums the uncalled numbers then multiplies that by the last number that was called.",
+        "Finds the worst borad, sums the uncalled numbers  hen multiplies that by the last number that was called.",
     )
+    .arg(
+        Arg::with_name("squid-win")
+        .short("s")
+        .help("If passed, try to let the squid win (find the worst board)."))
 }
 
 fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
+    let giant_squid_arguments = match arguments.subcommand_name() {
+        Some("part1") => GiantSquidArgs { squid_win: false },
+        Some("part2") => GiantSquidArgs { squid_win: true },
+        _ => GiantSquidArgs {
+            squid_win: arguments.is_present("squid-win"),
+        },
+    };
+
     file_to_string(file)
         .and_then(|f| complete_parsing(parse_bingo_game)(&f))
-        .map(find_bingo_winner)
+        .map(|game| find_bingo_winner(game, select_winner(&giant_squid_arguments.squid_win)))
         .map(process_bingo_winner)
         .map(CommandResult::from)
 }
@@ -68,7 +85,10 @@ fn process_bingo_winner(winner: (BingoBoard, usize)) -> usize {
     }) * last_number
 }
 
-fn find_bingo_winner(bingo_game: BingoGame) -> (BingoBoard, usize) {
+fn find_bingo_winner(
+    bingo_game: BingoGame,
+    determine_winner: impl Fn(&Vec<BingoBoard>) -> bool,
+) -> (BingoBoard, usize) {
     let mut boards = bingo_game.boards;
     let mut last_called_number = 0usize;
 
@@ -98,19 +118,36 @@ fn find_bingo_winner(bingo_game: BingoGame) -> (BingoBoard, usize) {
             })
             .collect();
 
-        if boards
-            .clone()
-            .into_iter()
-            .any(|board| is_board_winner(&board))
-        {
+        if determine_winner(&boards) {
             break;
         }
+
+        boards = boards
+            .into_iter()
+            .filter(|board| !is_board_winner(&board))
+            .collect();
     }
 
     (
         boards.into_iter().find(is_board_winner).unwrap(),
         last_called_number,
     )
+}
+
+fn select_winner(squid_win: &bool) -> impl Fn(&Vec<BingoBoard>) -> bool {
+    if *squid_win {
+        is_last_winner
+    } else {
+        is_first_winner
+    }
+}
+
+fn is_first_winner(boards: &Vec<BingoBoard>) -> bool {
+    boards.into_iter().any(|board| is_board_winner(&board))
+}
+
+fn is_last_winner(boards: &Vec<BingoBoard>) -> bool {
+    boards.into_iter().all(|board| is_board_winner(&board))
 }
 
 fn is_board_winner(bingo_board: &BingoBoard) -> bool {
