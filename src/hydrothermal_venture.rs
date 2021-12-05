@@ -1,10 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, convert::identity};
 
 use crate::lib::{
     complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
 };
 use anyhow::Error;
-use clap::{App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag, combinator::map, multi::separated_list0, sequence::separated_pair,
     IResult,
@@ -16,6 +16,11 @@ pub const HYDROTHERMAL_VENTURE: Command = Command::new(
     "day5_hydrothermal_venture",
     run,
 );
+
+#[derive(Debug)]
+struct HydrothermalVentureArgs {
+    ignore_diagnal_lines: bool,
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Point {
@@ -35,14 +40,32 @@ fn sub_command() -> App<'static, 'static> {
         "Counts the number of overlapping lines of hydrothermal vents",
         "Path to the input file. Input should be pairs of coordinates",
         "Searches the default input ignoring diagnal lines and finds the number of overlapping vents.",
-        "I will find out.",
+        "Searches the default input and finds the number of overlapping vents.",
     )
+    .arg(
+        Arg::with_name("ignore-diagnal-lines")
+        .short("i")
+        .help("If passed, ignore diagnal lines when mapping vents"))
 }
 
 fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
+    let hydrothermal_arguments = match arguments.subcommand_name() {
+        Some("part1") => HydrothermalVentureArgs { ignore_diagnal_lines: true },
+        Some("part2") => HydrothermalVentureArgs { ignore_diagnal_lines: false },
+        _ => HydrothermalVentureArgs {
+            ignore_diagnal_lines: arguments.is_present("ignore-diagnal-lines"),
+        },
+    };
+
+    let filter = if hydrothermal_arguments.ignore_diagnal_lines {
+        filter_horizontal_and_vertical_lines
+    } else {
+        identity
+    };
+
     file_to_string(file)
         .and_then(|file_content| complete_parsing(parse_all_lines)(&file_content))
-        .map(filter_horizontal_and_vertical_lines)
+        .map(filter)
         .map(|lines| find_overlapping_points(&lines))
         .map(CommandResult::from)
 }
