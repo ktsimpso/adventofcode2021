@@ -1,6 +1,8 @@
-use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command, CommandResult};
+use crate::lib::{complete_parsing, default_sub_command, file_to_string, Command, CommandResult};
+use adventofcode2021::parse_usize;
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
+use nom::{character::complete::newline, multi::separated_list0, IResult};
 
 pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", "day1_sonar_sweep", run);
 
@@ -28,34 +30,32 @@ fn sub_command() -> App<'static, 'static> {
 
 fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
     let sonar_arguments = match arguments.subcommand_name() {
-        Some("part1") => SonarSweepArgs {
-            sample_size: 1,
-        },
-        Some("part2") => SonarSweepArgs {
-            sample_size: 3,
-        },
+        Some("part1") => SonarSweepArgs { sample_size: 1 },
+        Some("part2") => SonarSweepArgs { sample_size: 3 },
         _ => SonarSweepArgs {
             sample_size: value_t_or_exit!(arguments.value_of("sample"), usize),
         },
     };
 
-    file_to_lines(file)
-        .and_then(|lines| {
-            parse_lines(lines, |line| line.parse::<isize>()).map_err(|err| err.into())
-        })
+    file_to_string(file)
+        .and_then(|lines| complete_parsing(parse_data)(&lines))
         .map(|lines| aggregate_samples(&lines, &sonar_arguments.sample_size))
         .map(count_increases)
         .map(CommandResult::from)
 }
 
-fn aggregate_samples(input: &Vec<isize>, sample_size: &usize) -> Vec<isize> {
+fn parse_data(input: &String) -> IResult<&str, Vec<usize>> {
+    separated_list0(newline, parse_usize)(input)
+}
+
+fn aggregate_samples(input: &Vec<usize>, sample_size: &usize) -> Vec<usize> {
     input
         .windows(*sample_size)
         .map(|window| window.into_iter().fold(0, |acc, number| acc + number))
         .collect()
 }
 
-fn count_increases(input: Vec<isize>) -> isize {
+fn count_increases(input: Vec<usize>) -> usize {
     input.windows(2).fold(
         0,
         |sum, window| {

@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, convert::identity};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::identity,
+};
 
 use crate::lib::{
     complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
@@ -6,8 +9,8 @@ use crate::lib::{
 use anyhow::Error;
 use clap::{App, Arg, ArgMatches};
 use nom::{
-    bytes::complete::tag, combinator::map, multi::separated_list0, sequence::separated_pair,
-    IResult,
+    bytes::complete::tag, character::complete::newline, combinator::map, multi::separated_list0,
+    sequence::separated_pair, IResult,
 };
 
 pub const HYDROTHERMAL_VENTURE: Command = Command::new(
@@ -50,8 +53,12 @@ fn sub_command() -> App<'static, 'static> {
 
 fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
     let hydrothermal_arguments = match arguments.subcommand_name() {
-        Some("part1") => HydrothermalVentureArgs { ignore_diagnal_lines: true },
-        Some("part2") => HydrothermalVentureArgs { ignore_diagnal_lines: false },
+        Some("part1") => HydrothermalVentureArgs {
+            ignore_diagnal_lines: true,
+        },
+        Some("part2") => HydrothermalVentureArgs {
+            ignore_diagnal_lines: false,
+        },
         _ => HydrothermalVentureArgs {
             ignore_diagnal_lines: arguments.is_present("ignore-diagnal-lines"),
         },
@@ -125,7 +132,7 @@ fn filter_horizontal_and_vertical_lines(lines: Vec<Line>) -> Vec<Line> {
 }
 
 fn parse_all_lines(input: &String) -> IResult<&str, Vec<Line>> {
-    separated_list0(tag("\n"), parse_line)(input)
+    separated_list0(newline, parse_line)(input)
 }
 
 fn parse_point(input: &str) -> IResult<&str, Point> {

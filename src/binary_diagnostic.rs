@@ -1,6 +1,11 @@
-use crate::lib::{default_sub_command, file_to_lines, parse_lines, Command, CommandResult};
+use crate::lib::{complete_parsing, default_sub_command, file_to_string, Command, CommandResult};
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
+use nom::bytes::complete::take_until;
+use nom::character::complete::newline;
+use nom::combinator::{map_res};
+use nom::multi::separated_list0;
+use nom::IResult;
 use std::convert::identity;
 use std::ops::{BitAnd, BitOr};
 use strum::VariantNames;
@@ -64,8 +69,8 @@ fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
         },
     };
 
-    file_to_lines(file)
-        .and_then(|lines| parse_lines(lines, parse_binary))
+    file_to_string(&file)
+        .and_then(|lines| complete_parsing(parse_binary)(&lines))
         .map(|binary| match binary_arguments.diagnostic {
             Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),
             Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
@@ -74,18 +79,21 @@ fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
         .map(CommandResult::from)
 }
 
-fn parse_binary(line: &String) -> Result<Binary, Error> {
-    usize::from_str_radix(line, 2)
-        .map_err(|e| e.into())
-        .and_then(|bits| {
-            line.len()
-                .try_into()
-                .map(|length| Binary {
+fn parse_binary(file: &String) -> IResult<&str, Vec<Binary>> {
+    separated_list0(
+        newline,
+        map_res(
+            map_res(take_until("\n"), |line| {
+                usize::from_str_radix(line, 2).map(|bits| (bits, line))
+            }),
+            |(bits, line)| {
+                line.len().try_into().map(|length| Binary {
                     bits: bits,
                     significant_bits: length,
                 })
-                .map_err(|e| e.into())
-        })
+            },
+        ),
+    )(file)
 }
 
 fn most_common_bit_at_position(numbers: &Vec<Binary>, position: u32) -> usize {

@@ -6,7 +6,7 @@ use nom::{character::complete::digit1, combinator::map_res, IResult};
 use simple_error::SimpleError;
 use std::fmt;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::Read;
 
 pub enum CommandResult {
     Isize(isize),
@@ -103,44 +103,13 @@ pub fn default_sub_command(
         )
 }
 
-pub fn file_to_lines(file_name: &String) -> Result<Vec<String>, Error> {
-    File::open(file_name)
-        .map_err(|err| err.into())
-        .and_then(|file| {
-            BufReader::new(file)
-                .lines()
-                .try_fold(Vec::new(), |mut lines, line_result| {
-                    line_result.map(|line| {
-                        lines.push(line);
-                        lines
-                    })
-                })
-                .map_err(|err| err.into())
-        })
-}
-
 pub fn file_to_string(file_name: &String) -> Result<String, Error> {
-    file_to_lines(file_name).map(|lines| {
-        lines.into_iter().fold(String::new(), |mut acc, line| {
-            acc.push_str(&line.to_string());
-            acc.push('\n');
-            acc
+    File::open(file_name)
+        .and_then(|mut file| {
+            let mut result = String::new();
+            file.read_to_string(&mut result).map(|_| result)
         })
-    })
-}
-
-pub fn parse_lines<T, U, E, F>(lines: Vec<T>, mut parse_function: F) -> Result<Vec<U>, E>
-where
-    F: FnMut(&T) -> Result<U, E>,
-{
-    lines
-        .into_iter()
-        .try_fold(Vec::new(), |mut parsed_lines, line| {
-            parse_function(&line).map(|parsed_line| {
-                parsed_lines.push(parsed_line);
-                parsed_lines
-            })
-        })
+        .map_err(|e| e.into())
 }
 
 pub fn complete_parsing<T, U, F>(mut parse_function: F) -> impl FnMut(&T) -> Result<U, Error>

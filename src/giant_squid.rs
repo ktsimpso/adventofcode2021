@@ -5,6 +5,7 @@ use anyhow::Error;
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::{tag, take_until, take_while},
+    character::complete::newline,
     combinator::{map, map_parser},
     multi::{many1, separated_list0, separated_list1},
     sequence::{preceded, terminated, tuple},
@@ -193,7 +194,7 @@ fn parse_bingo_boards(input: &str) -> IResult<&str, Vec<BingoBoard>> {
 }
 
 fn parse_bingo_board(input: &str) -> IResult<&str, BingoBoard> {
-    map(separated_list1(tag("\n"), parse_bingo_cell_row), |cells| {
+    map(separated_list1(newline, parse_bingo_cell_row), |cells| {
         BingoBoard { cells: cells }
     })(input)
 }

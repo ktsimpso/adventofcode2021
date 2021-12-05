@@ -1,13 +1,13 @@
 use crate::lib::{
-    complete_parsing, default_sub_command, file_to_lines, parse_lines, parse_usize, Command,
-    CommandResult,
+    complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
 };
 use anyhow::Error;
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag,
-    character::complete,
+    character::complete::{self, newline},
     combinator::{map, map_res},
+    multi::separated_list0,
     sequence::separated_pair,
     IResult,
 };
@@ -59,24 +59,27 @@ fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
         },
     };
 
-    file_to_lines(&file)
-        .and_then(|lines| parse_lines(lines, complete_parsing(parse_commands)))
+    file_to_string(&file)
+        .and_then(|lines| complete_parsing(parse_commands)(&lines))
         .map(|commands| determine_position(&commands, &dive_arguments.use_aim))
         .map(|(horizontal, depth)| horizontal * depth)
         .map(CommandResult::from)
 }
 
-fn parse_commands(line: &String) -> IResult<&str, SubmarineCommand> {
-    map(
-        separated_pair(
-            map_res(complete::alpha1, Direction::from_str),
-            tag(" "),
-            parse_usize,
+fn parse_commands(line: &String) -> IResult<&str, Vec<SubmarineCommand>> {
+    separated_list0(
+        newline,
+        map(
+            separated_pair(
+                map_res(complete::alpha1, Direction::from_str),
+                tag(" "),
+                parse_usize,
+            ),
+            |(direction, magnitude)| SubmarineCommand {
+                direction,
+                magnitude,
+            },
         ),
-        |(direction, magnitude)| SubmarineCommand {
-            direction,
-            magnitude,
-        },
     )(line)
 }
 
