@@ -44,33 +44,36 @@ pub trait Command: Sync {
     fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error>;
 }
 
-pub struct Problem<'a, A> {
+pub struct Problem<'a, A, T> {
     sub_command: fn() -> App<'static, 'static>,
     name: &'a str,
     folder_name: &'a str,
     parse_arguments: fn(&ArgMatches) -> A,
-    run: fn(&A, &String) -> Result<CommandResult, Error>,
+    parse_file: fn(&String) -> IResult<&str, T>,
+    run: fn(A, T) -> CommandResult,
 }
 
-impl<A> Problem<'_, A> {
+impl<A, T> Problem<'_, A, T> {
     pub const fn new<'a>(
         sub_command: fn() -> App<'static, 'static>,
         name: &'a str,
         folder_name: &'a str,
         parse_arguments: fn(&ArgMatches) -> A,
-        run: fn(&A, &String) -> Result<CommandResult, Error>,
-    ) -> Problem<'a, A> {
+        parse_file: fn(&String) -> IResult<&str, T>,
+        run: fn(A, T) -> CommandResult,
+    ) -> Problem<'a, A, T> {
         Problem {
             sub_command: sub_command,
             name: name,
             folder_name: folder_name,
             parse_arguments: parse_arguments,
+            parse_file: parse_file,
             run: run,
         }
     }
 }
 
-impl<A> Command for Problem<'_, A> {
+impl<A, T> Command for Problem<'_, A, T> {
     fn sub_command(&self) -> App<'static, 'static> {
         (self.sub_command)()
     }
@@ -84,12 +87,14 @@ impl<A> Command for Problem<'_, A> {
     }
 
     fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-        (self.run)(&(self.parse_arguments)(arguments), file)
+        file_to_string(file)
+            .and_then(|file_content| complete_parsing(self.parse_file)(&file_content))
+            .map(|t| (self.run)((self.parse_arguments)(arguments), t))
     }
 }
 
-pub fn default_sub_command<A>(
-    command: &Problem<A>,
+pub fn default_sub_command<A, T>(
+    command: &Problem<A, T>,
     about: &'static str,
     file_help: &'static str,
     part1_docs: &'static str,

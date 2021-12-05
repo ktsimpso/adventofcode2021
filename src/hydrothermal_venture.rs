@@ -1,23 +1,20 @@
-use std::{
-    collections::{HashMap, HashSet},
-    convert::identity,
-};
-
-use crate::lib::{
-    complete_parsing, default_sub_command, file_to_string, parse_usize, CommandResult, Problem,
-};
-use anyhow::Error;
+use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag, character::complete::newline, combinator::map, multi::separated_list0,
     sequence::separated_pair, IResult,
 };
+use std::{
+    collections::{HashMap, HashSet},
+    convert::identity,
+};
 
-pub const HYDROTHERMAL_VENTURE: Problem<HydrothermalVentureArgs> = Problem::new(
+pub const HYDROTHERMAL_VENTURE: Problem<HydrothermalVentureArgs, Vec<Line>> = Problem::new(
     sub_command,
     "hydrothermal-venture",
     "day5_hydrothermal_venture",
     parse_arguments,
+    parse_all_lines,
     run,
 );
 
@@ -33,7 +30,7 @@ struct Point {
 }
 
 #[derive(Debug)]
-struct Line {
+pub struct Line {
     start: Point,
     end: Point,
 }
@@ -66,18 +63,14 @@ fn parse_arguments(arguments: &ArgMatches) -> HydrothermalVentureArgs {
     }
 }
 
-fn run(arguments: &HydrothermalVentureArgs, file: &String) -> Result<CommandResult, Error> {
+fn run(arguments: HydrothermalVentureArgs, lines: Vec<Line>) -> CommandResult {
     let filter = if arguments.ignore_diagnal_lines {
         filter_horizontal_and_vertical_lines
     } else {
         identity
     };
 
-    file_to_string(file)
-        .and_then(|file_content| complete_parsing(parse_all_lines)(&file_content))
-        .map(filter)
-        .map(|lines| find_overlapping_points(&lines))
-        .map(CommandResult::from)
+    find_overlapping_points(&filter(lines)).into()
 }
 
 fn find_overlapping_points(lines: &Vec<Line>) -> usize {

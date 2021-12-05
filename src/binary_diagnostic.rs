@@ -1,5 +1,4 @@
-use crate::lib::{complete_parsing, default_sub_command, file_to_string, CommandResult, Problem};
-use anyhow::Error;
+use crate::lib::{default_sub_command, CommandResult, Problem};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::bytes::complete::take_until;
 use nom::character::complete::newline;
@@ -11,11 +10,12 @@ use std::ops::{BitAnd, BitOr};
 use strum::VariantNames;
 use strum_macros::{EnumString, EnumVariantNames};
 
-pub const BINARY_DIAGNOSTIC: Problem<BinaryDiagnosticArgs> = Problem::new(
+pub const BINARY_DIAGNOSTIC: Problem<BinaryDiagnosticArgs, Vec<Binary>> = Problem::new(
     sub_command,
     "binary-diagnostic",
     "day3_binary_diagnostic",
     parse_arguments,
+    parse_binary,
     run,
 );
 
@@ -32,7 +32,7 @@ enum Diagnostic {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Binary {
+pub struct Binary {
     bits: usize,
     significant_bits: u32,
 }
@@ -71,15 +71,13 @@ fn parse_arguments(arguments: &ArgMatches) -> BinaryDiagnosticArgs {
     }
 }
 
-fn run(arguments: &BinaryDiagnosticArgs, file: &String) -> Result<CommandResult, Error> {
-    file_to_string(&file)
-        .and_then(|lines| complete_parsing(parse_binary)(&lines))
-        .map(|binary| match arguments.diagnostic {
-            Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),
-            Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
-        })
-        .map(|(metric1, metric2)| metric1 * metric2)
-        .map(CommandResult::from)
+fn run(arguments: BinaryDiagnosticArgs, binary: Vec<Binary>) -> CommandResult {
+    let (metric1, metric2) = match arguments.diagnostic {
+        Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),
+        Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
+    };
+
+    (metric1 * metric2).into()
 }
 
 fn parse_binary(file: &String) -> IResult<&str, Vec<Binary>> {

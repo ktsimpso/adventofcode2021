@@ -1,7 +1,4 @@
-use crate::lib::{
-    complete_parsing, default_sub_command, file_to_string, parse_usize, CommandResult, Problem,
-};
-use anyhow::Error;
+use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::{tag, take_until, take_while},
@@ -12,7 +9,14 @@ use nom::{
     IResult,
 };
 
-pub const GIANT_SQUID: Problem<GiantSquidArgs> = Problem::new(sub_command, "giant-squid", "day4_giant_squid", parse_arguments, run);
+pub const GIANT_SQUID: Problem<GiantSquidArgs, BingoGame> = Problem::new(
+    sub_command,
+    "giant-squid",
+    "day4_giant_squid",
+    parse_arguments,
+    parse_bingo_game,
+    run,
+);
 
 #[derive(Debug)]
 pub struct GiantSquidArgs {
@@ -20,7 +24,7 @@ pub struct GiantSquidArgs {
 }
 
 #[derive(Debug, Clone)]
-struct BingoGame {
+pub struct BingoGame {
     numbers_to_call: Vec<usize>,
     boards: Vec<BingoBoard>,
 }
@@ -69,12 +73,12 @@ fn parse_arguments(arguments: &ArgMatches) -> GiantSquidArgs {
     }
 }
 
-fn run(arguments: &GiantSquidArgs, file: &String) -> Result<CommandResult, Error> {
-    file_to_string(file)
-        .and_then(|f| complete_parsing(parse_bingo_game)(&f))
-        .map(|game| find_bingo_winner(game, select_winner(&arguments.squid_win)))
-        .map(process_bingo_winner)
-        .map(CommandResult::from)
+fn run(arguments: GiantSquidArgs, bingo_game: BingoGame) -> CommandResult {
+    process_bingo_winner(find_bingo_winner(
+        bingo_game,
+        select_winner(&arguments.squid_win),
+    ))
+    .into()
 }
 
 fn process_bingo_winner(winner: (BingoBoard, usize)) -> usize {

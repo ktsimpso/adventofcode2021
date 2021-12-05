@@ -1,7 +1,4 @@
-use crate::lib::{
-    complete_parsing, default_sub_command, file_to_string, parse_usize, CommandResult, Problem,
-};
-use anyhow::Error;
+use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag,
@@ -14,8 +11,14 @@ use nom::{
 use std::str::FromStr;
 use strum_macros::{EnumString, EnumVariantNames};
 
-pub const DIVE: Problem<DiveArgs> =
-    Problem::new(sub_command, "dive", "day2_dive", parse_arguments, run);
+pub const DIVE: Problem<DiveArgs, Vec<SubmarineCommand>> = Problem::new(
+    sub_command,
+    "dive",
+    "day2_dive",
+    parse_arguments,
+    parse_commands,
+    run,
+);
 
 #[derive(Debug)]
 pub struct DiveArgs {
@@ -31,7 +34,7 @@ enum Direction {
 }
 
 #[derive(Debug)]
-struct SubmarineCommand {
+pub struct SubmarineCommand {
     direction: Direction,
     magnitude: usize,
 }
@@ -61,12 +64,9 @@ fn parse_arguments(arguments: &ArgMatches) -> DiveArgs {
     }
 }
 
-fn run(arguments: &DiveArgs, file: &String) -> Result<CommandResult, Error> {
-    file_to_string(&file)
-        .and_then(|lines| complete_parsing(parse_commands)(&lines))
-        .map(|commands| determine_position(&commands, &arguments.use_aim))
-        .map(|(horizontal, depth)| horizontal * depth)
-        .map(CommandResult::from)
+fn run(arguments: DiveArgs, commands: Vec<SubmarineCommand>) -> CommandResult {
+    let (horizontal, depth) = determine_position(&commands, &arguments.use_aim);
+    (horizontal * depth).into()
 }
 
 fn parse_commands(line: &String) -> IResult<&str, Vec<SubmarineCommand>> {

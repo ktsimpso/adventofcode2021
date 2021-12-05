@@ -1,14 +1,13 @@
-use crate::lib::{complete_parsing, default_sub_command, file_to_string, CommandResult, Problem};
-use adventofcode2021::parse_usize;
-use anyhow::Error;
+use crate::lib::{default_sub_command, CommandResult, Problem, parse_usize};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{character::complete::newline, multi::separated_list0, IResult};
 
-pub const SONAR_SWEEP: Problem<SonarSweepArgs> = Problem::new(
+pub const SONAR_SWEEP: Problem<SonarSweepArgs, Vec<usize>> = Problem::new(
     sub_command,
     "sonar-sweep",
     "day1_sonar_sweep",
     parse_arguments,
+    parse_data,
     run,
 );
 
@@ -44,12 +43,8 @@ fn parse_arguments(arguments: &ArgMatches) -> SonarSweepArgs {
     }
 }
 
-fn run(arguments: &SonarSweepArgs, file: &String) -> Result<CommandResult, Error> {
-    file_to_string(file)
-        .and_then(|lines| complete_parsing(parse_data)(&lines))
-        .map(|lines| aggregate_samples(&lines, &arguments.sample_size))
-        .map(count_increases)
-        .map(CommandResult::from)
+fn run(arguments: SonarSweepArgs, samples: Vec<usize>) -> CommandResult {
+    count_increases(aggregate_samples(&samples, &arguments.sample_size)).into()
 }
 
 fn parse_data(input: &String) -> IResult<&str, Vec<usize>> {
