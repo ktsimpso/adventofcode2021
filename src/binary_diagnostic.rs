@@ -1,9 +1,9 @@
-use crate::lib::{complete_parsing, default_sub_command, file_to_string, Command, CommandResult};
+use crate::lib::{complete_parsing, default_sub_command, file_to_string, CommandResult, Problem};
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::bytes::complete::take_until;
 use nom::character::complete::newline;
-use nom::combinator::{map_res};
+use nom::combinator::map_res;
 use nom::multi::separated_list0;
 use nom::IResult;
 use std::convert::identity;
@@ -11,15 +11,16 @@ use std::ops::{BitAnd, BitOr};
 use strum::VariantNames;
 use strum_macros::{EnumString, EnumVariantNames};
 
-pub const BINARY_DIAGNOSTIC: Command = Command::new(
+pub const BINARY_DIAGNOSTIC: Problem<BinaryDiagnosticArgs> = Problem::new(
     sub_command,
     "binary-diagnostic",
     "day3_binary_diagnostic",
+    parse_arguments,
     run,
 );
 
 #[derive(Debug)]
-struct BinaryDiagnosticArgs {
+pub struct BinaryDiagnosticArgs {
     diagnostic: Diagnostic,
 }
 
@@ -56,8 +57,8 @@ fn sub_command() -> App<'static, 'static> {
     )
 }
 
-fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-    let binary_arguments = match arguments.subcommand_name() {
+fn parse_arguments(arguments: &ArgMatches) -> BinaryDiagnosticArgs {
+    match arguments.subcommand_name() {
         Some("part1") => BinaryDiagnosticArgs {
             diagnostic: Diagnostic::PowerConsumption,
         },
@@ -67,11 +68,13 @@ fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
         _ => BinaryDiagnosticArgs {
             diagnostic: value_t_or_exit!(arguments.value_of("diagnostic"), Diagnostic),
         },
-    };
+    }
+}
 
+fn run(arguments: &BinaryDiagnosticArgs, file: &String) -> Result<CommandResult, Error> {
     file_to_string(&file)
         .and_then(|lines| complete_parsing(parse_binary)(&lines))
-        .map(|binary| match binary_arguments.diagnostic {
+        .map(|binary| match arguments.diagnostic {
             Diagnostic::PowerConsumption => (find_gamma(&binary), find_epsilon(&binary)),
             Diagnostic::LifeSupport => (find_oxygen(&binary), find_c02(&binary)),
         })

@@ -9,18 +9,23 @@ mod sonar_sweep;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
+#[macro_use]
+extern crate lazy_static;
 use lib::Command;
 use simple_error::SimpleError;
 use std::collections::HashMap;
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-const COMMANDS: &'static [Command] = &[
-    sonar_sweep::SONAR_SWEEP,
-    dive::DIVE,
-    binary_diagnostic::BINARY_DIAGNOSTIC,
-    giant_squid::GIANT_SQUID,
-    hydrothermal_venture::HYDROTHERMAL_VENTURE,
-];
+
+lazy_static! {
+    static ref COMMANDS: Vec<Box<dyn Command>> = vec![
+        Box::new(sonar_sweep::SONAR_SWEEP),
+        Box::new(dive::DIVE),
+        Box::new(binary_diagnostic::BINARY_DIAGNOSTIC),
+        Box::new(giant_squid::GIANT_SQUID),
+        Box::new(hydrothermal_venture::HYDROTHERMAL_VENTURE),
+    ];
+}
 
 fn main() -> Result<(), Error> {
     let app = App::new("Advent of code 2021")
@@ -33,7 +38,7 @@ fn main() -> Result<(), Error> {
         .fold(app, |app, command| app.subcommand(command.sub_command()))
         .get_matches();
 
-    let sub_commands: HashMap<&str, &Command> = COMMANDS
+    let sub_commands: HashMap<&str, &Box<dyn Command>> = COMMANDS
         .iter()
         .map(|command| (command.name(), command))
         .collect();

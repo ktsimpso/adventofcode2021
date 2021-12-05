@@ -1,13 +1,19 @@
-use crate::lib::{complete_parsing, default_sub_command, file_to_string, Command, CommandResult};
+use crate::lib::{complete_parsing, default_sub_command, file_to_string, CommandResult, Problem};
 use adventofcode2021::parse_usize;
 use anyhow::Error;
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{character::complete::newline, multi::separated_list0, IResult};
 
-pub const SONAR_SWEEP: Command = Command::new(sub_command, "sonar-sweep", "day1_sonar_sweep", run);
+pub const SONAR_SWEEP: Problem<SonarSweepArgs> = Problem::new(
+    sub_command,
+    "sonar-sweep",
+    "day1_sonar_sweep",
+    parse_arguments,
+    run,
+);
 
 #[derive(Debug)]
-struct SonarSweepArgs {
+pub struct SonarSweepArgs {
     sample_size: usize,
 }
 
@@ -28,18 +34,20 @@ fn sub_command() -> App<'static, 'static> {
     )
 }
 
-fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-    let sonar_arguments = match arguments.subcommand_name() {
+fn parse_arguments(arguments: &ArgMatches) -> SonarSweepArgs {
+    match arguments.subcommand_name() {
         Some("part1") => SonarSweepArgs { sample_size: 1 },
         Some("part2") => SonarSweepArgs { sample_size: 3 },
         _ => SonarSweepArgs {
             sample_size: value_t_or_exit!(arguments.value_of("sample"), usize),
         },
-    };
+    }
+}
 
+fn run(arguments: &SonarSweepArgs, file: &String) -> Result<CommandResult, Error> {
     file_to_string(file)
         .and_then(|lines| complete_parsing(parse_data)(&lines))
-        .map(|lines| aggregate_samples(&lines, &sonar_arguments.sample_size))
+        .map(|lines| aggregate_samples(&lines, &arguments.sample_size))
         .map(count_increases)
         .map(CommandResult::from)
 }

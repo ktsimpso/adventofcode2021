@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::lib::{
-    complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
+    complete_parsing, default_sub_command, file_to_string, parse_usize, CommandResult, Problem,
 };
 use anyhow::Error;
 use clap::{App, Arg, ArgMatches};
@@ -13,15 +13,16 @@ use nom::{
     sequence::separated_pair, IResult,
 };
 
-pub const HYDROTHERMAL_VENTURE: Command = Command::new(
+pub const HYDROTHERMAL_VENTURE: Problem<HydrothermalVentureArgs> = Problem::new(
     sub_command,
     "hydrothermal-venture",
     "day5_hydrothermal_venture",
+    parse_arguments,
     run,
 );
 
 #[derive(Debug)]
-struct HydrothermalVentureArgs {
+pub struct HydrothermalVentureArgs {
     ignore_diagnal_lines: bool,
 }
 
@@ -51,8 +52,8 @@ fn sub_command() -> App<'static, 'static> {
         .help("If passed, ignore diagnal lines when mapping vents"))
 }
 
-fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-    let hydrothermal_arguments = match arguments.subcommand_name() {
+fn parse_arguments(arguments: &ArgMatches) -> HydrothermalVentureArgs {
+    match arguments.subcommand_name() {
         Some("part1") => HydrothermalVentureArgs {
             ignore_diagnal_lines: true,
         },
@@ -62,9 +63,11 @@ fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
         _ => HydrothermalVentureArgs {
             ignore_diagnal_lines: arguments.is_present("ignore-diagnal-lines"),
         },
-    };
+    }
+}
 
-    let filter = if hydrothermal_arguments.ignore_diagnal_lines {
+fn run(arguments: &HydrothermalVentureArgs, file: &String) -> Result<CommandResult, Error> {
+    let filter = if arguments.ignore_diagnal_lines {
         filter_horizontal_and_vertical_lines
     } else {
         identity

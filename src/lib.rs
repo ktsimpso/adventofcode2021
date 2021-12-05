@@ -33,47 +33,63 @@ impl From<usize> for CommandResult {
         CommandResult::Usize(item)
     }
 }
-pub struct Command<'a> {
+
+pub trait Command: Sync {
+    fn sub_command(&self) -> App<'static, 'static>;
+
+    fn name(&self) -> &str;
+
+    fn folder_name(&self) -> &str;
+
+    fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error>;
+}
+
+pub struct Problem<'a, A> {
     sub_command: fn() -> App<'static, 'static>,
     name: &'a str,
     folder_name: &'a str,
-    run: fn(&ArgMatches, &String) -> Result<CommandResult, Error>,
+    parse_arguments: fn(&ArgMatches) -> A,
+    run: fn(&A, &String) -> Result<CommandResult, Error>,
 }
 
-impl Command<'_> {
+impl<A> Problem<'_, A> {
     pub const fn new<'a>(
         sub_command: fn() -> App<'static, 'static>,
         name: &'a str,
         folder_name: &'a str,
-        run: fn(&ArgMatches, &String) -> Result<CommandResult, Error>,
-    ) -> Command<'a> {
-        Command {
+        parse_arguments: fn(&ArgMatches) -> A,
+        run: fn(&A, &String) -> Result<CommandResult, Error>,
+    ) -> Problem<'a, A> {
+        Problem {
             sub_command: sub_command,
             name: name,
             folder_name: folder_name,
+            parse_arguments: parse_arguments,
             run: run,
         }
     }
+}
 
-    pub fn sub_command(&self) -> App<'static, 'static> {
+impl<A> Command for Problem<'_, A> {
+    fn sub_command(&self) -> App<'static, 'static> {
         (self.sub_command)()
     }
 
-    pub fn name(&self) -> &str {
+    fn name(&self) -> &str {
         self.name
     }
 
-    pub fn folder_name(&self) -> &str {
+    fn folder_name(&self) -> &str {
         self.folder_name
     }
 
-    pub fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-        (self.run)(arguments, file)
+    fn run(&self, arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
+        (self.run)(&(self.parse_arguments)(arguments), file)
     }
 }
 
-pub fn default_sub_command(
-    command: &Command,
+pub fn default_sub_command<A>(
+    command: &Problem<A>,
     about: &'static str,
     file_help: &'static str,
     part1_docs: &'static str,

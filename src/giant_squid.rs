@@ -1,5 +1,5 @@
 use crate::lib::{
-    complete_parsing, default_sub_command, file_to_string, parse_usize, Command, CommandResult,
+    complete_parsing, default_sub_command, file_to_string, parse_usize, CommandResult, Problem,
 };
 use anyhow::Error;
 use clap::{App, Arg, ArgMatches};
@@ -12,10 +12,10 @@ use nom::{
     IResult,
 };
 
-pub const GIANT_SQUID: Command = Command::new(sub_command, "giant-squid", "day4_giant_squid", run);
+pub const GIANT_SQUID: Problem<GiantSquidArgs> = Problem::new(sub_command, "giant-squid", "day4_giant_squid", parse_arguments, run);
 
 #[derive(Debug)]
-struct GiantSquidArgs {
+pub struct GiantSquidArgs {
     squid_win: bool,
 }
 
@@ -59,18 +59,20 @@ fn sub_command() -> App<'static, 'static> {
         .help("If passed, try to let the squid win (find the worst board)."))
 }
 
-fn run(arguments: &ArgMatches, file: &String) -> Result<CommandResult, Error> {
-    let giant_squid_arguments = match arguments.subcommand_name() {
+fn parse_arguments(arguments: &ArgMatches) -> GiantSquidArgs {
+    match arguments.subcommand_name() {
         Some("part1") => GiantSquidArgs { squid_win: false },
         Some("part2") => GiantSquidArgs { squid_win: true },
         _ => GiantSquidArgs {
             squid_win: arguments.is_present("squid-win"),
         },
-    };
+    }
+}
 
+fn run(arguments: &GiantSquidArgs, file: &String) -> Result<CommandResult, Error> {
     file_to_string(file)
         .and_then(|f| complete_parsing(parse_bingo_game)(&f))
-        .map(|game| find_bingo_winner(game, select_winner(&giant_squid_arguments.squid_win)))
+        .map(|game| find_bingo_winner(game, select_winner(&arguments.squid_win)))
         .map(process_bingo_winner)
         .map(CommandResult::from)
 }
