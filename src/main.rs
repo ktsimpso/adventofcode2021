@@ -4,6 +4,7 @@ mod binary_diagnostic;
 mod dive;
 mod giant_squid;
 mod hydrothermal_venture;
+mod lanternfish;
 mod lib;
 mod sonar_sweep;
 
@@ -24,6 +25,7 @@ lazy_static! {
         Box::new(binary_diagnostic::BINARY_DIAGNOSTIC),
         Box::new(giant_squid::GIANT_SQUID),
         Box::new(hydrothermal_venture::HYDROTHERMAL_VENTURE),
+        Box::new(lanternfish::LANTERNFISH),
     ];
 }
 
