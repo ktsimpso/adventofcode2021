@@ -172,8 +172,7 @@ fn has_column_winner(bingo_board: &BingoBoard) -> bool {
     for i in 0..bingo_board.cells.len() {
         let column_result = bingo_board
             .cells
-            .clone()
-            .into_iter()
+            .iter()
             .map(|row| row.get(i).unwrap().called)
             .fold(true, |acc, called| acc && called);
 

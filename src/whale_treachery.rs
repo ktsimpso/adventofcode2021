@@ -65,15 +65,13 @@ fn run(arguments: WhaleTreacheryArgs, crabs: HashMap<usize, usize>) -> CommandRe
         FuelFunction::Linear => linear,
     };
 
-    let min = crabs
-        .clone()
-        .into_keys()
+    let min = *crabs
+        .keys()
         .reduce(|min, item| if item < min { item } else { min })
-        .unwrap_or(0usize);
-    let max = crabs
-        .clone()
-        .into_keys()
-        .fold(0usize, |max, item| if item > max { item } else { max });
+        .unwrap_or(&0usize);
+    let max = *crabs
+        .keys()
+        .fold(&0usize, |max, item| if item > max { item } else { max });
     (min..max)
         .map(|position| fuel_cost_at_position(&crabs, &position, fuel_function))
         .reduce(|min, item| if item < min { item } else { min })
