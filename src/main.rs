@@ -7,6 +7,7 @@ mod hydrothermal_venture;
 mod lanternfish;
 mod lib;
 mod sonar_sweep;
+mod whale_treachery;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -26,6 +27,7 @@ lazy_static! {
         Box::new(giant_squid::GIANT_SQUID),
         Box::new(hydrothermal_venture::HYDROTHERMAL_VENTURE),
         Box::new(lanternfish::LANTERNFISH),
+        Box::new(whale_treachery::WHALE_TREACHERY),
     ];
 }
 
