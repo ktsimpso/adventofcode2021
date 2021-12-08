@@ -6,6 +6,7 @@ mod giant_squid;
 mod hydrothermal_venture;
 mod lanternfish;
 mod lib;
+mod seven_segment;
 mod sonar_sweep;
 mod whale_treachery;
 
@@ -28,6 +29,7 @@ lazy_static! {
         Box::new(hydrothermal_venture::HYDROTHERMAL_VENTURE),
         Box::new(lanternfish::LANTERNFISH),
         Box::new(whale_treachery::WHALE_TREACHERY),
+        Box::new(seven_segment::SEVEN_SEGMENT),
     ];
 }
 
