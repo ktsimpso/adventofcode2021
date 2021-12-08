@@ -1,4 +1,4 @@
-use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
+use crate::lib::{absolute_difference, default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{bytes::complete::tag, combinator::map, multi::separated_list0, IResult};
 use std::{collections::HashMap, convert::identity};
@@ -87,11 +87,7 @@ fn fuel_cost_at_position(
     crabs
         .into_iter()
         .map(|(crab, count)| {
-            let n = if crab >= position {
-                crab - position
-            } else {
-                position - crab
-            };
+            let n = absolute_difference(*crab, *position);
 
             fuel_function(n) * count
         })

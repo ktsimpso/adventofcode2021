@@ -7,6 +7,7 @@ use simple_error::SimpleError;
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
+use std::ops::Sub;
 
 pub enum CommandResult {
     Isize(isize),
@@ -150,4 +151,15 @@ pub fn parse_usize(input: &str) -> IResult<&str, usize> {
 
 fn usisze_from_string(input: &str) -> Result<usize, Error> {
     usize::from_str_radix(input, 10).map_err(|err| err.into())
+}
+
+pub fn absolute_difference<T>(x: T, y: T) -> T
+where
+    T: Sub<Output = T> + PartialOrd,
+{
+    if x > y {
+        x - y
+    } else {
+        y - x
+    }
 }
