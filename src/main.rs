@@ -9,6 +9,7 @@ mod lib;
 mod seven_segment;
 mod sonar_sweep;
 mod whale_treachery;
+mod smoke_basin;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -30,6 +31,7 @@ lazy_static! {
         Box::new(lanternfish::LANTERNFISH),
         Box::new(whale_treachery::WHALE_TREACHERY),
         Box::new(seven_segment::SEVEN_SEGMENT),
+        Box::new(smoke_basin::SMOKE_BASIN),
     ];
 }
 
