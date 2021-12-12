@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -9,6 +9,8 @@ use nom::{
     sequence::tuple,
     IResult,
 };
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const SYNTAX_SCORING: Problem<SyntaxScoringArgs, Vec<Vec<Chunk>>> = Problem::new(
     sub_command,
@@ -20,7 +22,16 @@ pub const SYNTAX_SCORING: Problem<SyntaxScoringArgs, Vec<Vec<Chunk>>> = Problem:
 );
 
 #[derive(Debug)]
-pub struct SyntaxScoringArgs {}
+pub struct SyntaxScoringArgs {
+    scoring_function: ScoringFunction,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum ScoringFunction {
+    Corrupted,
+    Incomplete,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bracket {
@@ -53,20 +64,103 @@ fn sub_command() -> App<'static, 'static> {
         "Parses chunks from lines of chunks then calculates stats based on the result.",
         "Path to the input file. Input should be newline delimited chunks.",
         "Searches the default and scores all the lines with corrupted chunks.",
-        "I will find out.",
+        "Searches the default, scores the incomplete lines and returns the middle valued one.",
+    )
+    .arg(
+        Arg::with_name("scoring-function")
+            .short("s")
+            .help(
+                "The scoring type to use. The functions available are as follows:\n\n\
+            corrupted: Scores the first Corrupted Chunk of each line then sums the scores.\n\n\
+            incomplete: Scores the non Corrupted Incomplete Lines returns the middle score.\n\n",
+            )
+            .takes_value(true)
+            .possible_values(&ScoringFunction::VARIANTS)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> SyntaxScoringArgs {
     match arguments.subcommand_name() {
-        Some("part1") => SyntaxScoringArgs {},
-        Some("part2") => SyntaxScoringArgs {},
-        _ => SyntaxScoringArgs {},
+        Some("part1") => SyntaxScoringArgs {
+            scoring_function: ScoringFunction::Corrupted,
+        },
+        Some("part2") => SyntaxScoringArgs {
+            scoring_function: ScoringFunction::Incomplete,
+        },
+        _ => SyntaxScoringArgs {
+            scoring_function: value_t_or_exit!(
+                arguments.value_of("scoring-function"),
+                ScoringFunction
+            ),
+        },
     }
 }
 
 fn run(arguments: SyntaxScoringArgs, chunk_lines: Vec<Vec<Chunk>>) -> CommandResult {
-    sum_corrupted_chunks(chunk_lines).into()
+    match arguments.scoring_function {
+        ScoringFunction::Corrupted => sum_corrupted_chunks(chunk_lines),
+        ScoringFunction::Incomplete => middle_incomplete_chunk_score(chunk_lines),
+    }
+    .into()
+}
+
+fn middle_incomplete_chunk_score(chunk_lines: Vec<Vec<Chunk>>) -> usize {
+    let mut result: Vec<usize> = chunk_lines
+        .iter()
+        .filter(|chunks| {
+            chunks
+                .iter()
+                .map(evaluate_corrupt_chunks)
+                .all(|value| value == 0)
+        })
+        .map(|chunks| {
+            chunks
+                .iter()
+                .map(evaluate_incomplete_chunks)
+                .fold(0usize, |acc, score| acc + score)
+        })
+        .collect();
+    result.sort();
+    *result.get(result.len() / 2).unwrap()
+}
+
+fn evaluate_incomplete_chunks(chunk: &Chunk) -> usize {
+    list_missing_brackets(&chunk)
+        .iter()
+        .fold(0usize, |mut acc, bracket| {
+            acc *= 5;
+            acc + match bracket {
+                Bracket::Paren => 1usize,
+                Bracket::Square => 2usize,
+                &Bracket::Curly => 3usize,
+                &Bracket::Angle => 4usize,
+            }
+        })
+}
+
+fn list_missing_brackets(chunk: &Chunk) -> Vec<Bracket> {
+    match chunk {
+        Chunk::CompleteChunk { bracket: _, chunks } => chunks
+            .iter()
+            .map(list_missing_brackets)
+            .fold(Vec::new(), |mut acc, mut brackets| {
+                acc.append(&mut brackets);
+                acc
+            }),
+        Chunk::IncompleteChunk { first, chunks } => {
+            let mut result = chunks.iter().map(list_missing_brackets).fold(
+                Vec::new(),
+                |mut acc, mut brackets| {
+                    acc.append(&mut brackets);
+                    acc
+                },
+            );
+            result.push(*first);
+            result
+        }
+        _ => Vec::new(),
+    }
 }
 
 fn sum_corrupted_chunks(chunk_lines: Vec<Vec<Chunk>>) -> usize {
