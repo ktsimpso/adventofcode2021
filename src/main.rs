@@ -7,6 +7,7 @@ mod giant_squid;
 mod hydrothermal_venture;
 mod lanternfish;
 mod lib;
+mod passage_pathing;
 mod seven_segment;
 mod smoke_basin;
 mod sonar_sweep;
@@ -36,6 +37,7 @@ lazy_static! {
         Box::new(smoke_basin::SMOKE_BASIN),
         Box::new(syntax_scoring::SYNTAX_SCORING),
         Box::new(dumbo_octopus::DUMBO_OCTOPUS),
+        Box::new(passage_pathing::PASSAGE_PATHING),
     ];
 }
 
