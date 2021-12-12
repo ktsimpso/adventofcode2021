@@ -2,6 +2,7 @@
 
 mod binary_diagnostic;
 mod dive;
+mod dumbo_octopus;
 mod giant_squid;
 mod hydrothermal_venture;
 mod lanternfish;
@@ -34,6 +35,7 @@ lazy_static! {
         Box::new(seven_segment::SEVEN_SEGMENT),
         Box::new(smoke_basin::SMOKE_BASIN),
         Box::new(syntax_scoring::SYNTAX_SCORING),
+        Box::new(dumbo_octopus::DUMBO_OCTOPUS),
     ];
 }
 
