@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -25,7 +25,9 @@ pub const PASSAGE_PATHING: Problem<PassagePathingArgs, Vec<(Cave<'static>, Cave<
     );
 
 #[derive(Debug)]
-pub struct PassagePathingArgs {}
+pub struct PassagePathingArgs {
+    reuse_small_cave: bool,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Cave<'a> {
@@ -39,6 +41,7 @@ pub enum Cave<'a> {
 struct Journey<'a> {
     visited_caves: HashSet<Cave<'a>>,
     caves: Vec<Cave<'a>>,
+    small_cave: Option<Cave<'a>>,
 }
 
 fn sub_command() -> App<'static, 'static> {
@@ -47,15 +50,26 @@ fn sub_command() -> App<'static, 'static> {
         "Goes through all possible paths and counts them",
         "Path to the input file. Input should valid transitions from cave to cave.",
         "Searches the default input for the maximum number of valid paths.",
-        "I will find out.",
+        "Searches the default input for the maximum number but one small cave may be reused.",
+    )
+    .arg(
+        Arg::with_name("reuse-small-cave")
+            .short("r")
+            .help("If passed, one small cave can be reused."),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> PassagePathingArgs {
     match arguments.subcommand_name() {
-        Some("part1") => PassagePathingArgs {},
-        Some("part2") => PassagePathingArgs {},
-        _ => PassagePathingArgs {},
+        Some("part1") => PassagePathingArgs {
+            reuse_small_cave: false,
+        },
+        Some("part2") => PassagePathingArgs {
+            reuse_small_cave: true,
+        },
+        _ => PassagePathingArgs {
+            reuse_small_cave: arguments.is_present("reuse-small-cave"),
+        },
     }
 }
 
@@ -88,9 +102,16 @@ fn run(arguments: PassagePathingArgs, paths: Vec<(Cave<'static>, Cave<'static>)>
         },
     );
 
+    let small_cave = if arguments.reuse_small_cave {
+        Option::None
+    } else {
+        Option::Some(Cave::Start)
+    };
+
     let mut start = Journey {
         visited_caves: HashSet::new(),
         caves: vec![Cave::Start],
+        small_cave: small_cave,
     };
 
     start.visited_caves.insert(Cave::Start);
@@ -109,7 +130,15 @@ fn find_all_journies(
         .map(|cave| match cave {
             Cave::Small { name: _ } => {
                 if journey.visited_caves.contains(cave) {
-                    Vec::new()
+                    match journey.small_cave {
+                        Option::Some(_) => Vec::new(),
+                        Option::None => {
+                            let mut new_journey = journey.clone();
+                            new_journey.caves.push(*cave);
+                            new_journey.small_cave = Option::Some(*cave);
+                            find_all_journies(&cave_paths, new_journey)
+                        }
+                    }
                 } else {
                     let mut new_journey = journey.clone();
                     new_journey.visited_caves.insert(*cave);
