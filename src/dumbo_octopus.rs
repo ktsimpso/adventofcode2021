@@ -1,7 +1,5 @@
-use std::collections::HashSet;
-
 use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     bytes::complete::take,
     character::complete::newline,
@@ -9,6 +7,9 @@ use nom::{
     multi::{many0, separated_list0},
     IResult,
 };
+use std::collections::HashSet;
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const DUMBO_OCTOPUS: Problem<DumboOctopusArgs, Vec<Vec<usize>>> = Problem::new(
     sub_command,
@@ -20,7 +21,16 @@ pub const DUMBO_OCTOPUS: Problem<DumboOctopusArgs, Vec<Vec<usize>>> = Problem::n
 );
 
 #[derive(Debug)]
-pub struct DumboOctopusArgs {}
+pub struct DumboOctopusArgs {
+    simulation_parameters: SimulationParameters,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum SimulationParameters {
+    OneHundredSteps,
+    SynchronizedFlashes,
+}
 
 fn sub_command() -> App<'static, 'static> {
     default_sub_command(
@@ -28,20 +38,60 @@ fn sub_command() -> App<'static, 'static> {
         "Simulates dumbo octopi flashing behavoir.",
         "Path to the input file. Input should be newline delimited sets of 10 integers from 0-9.",
         "Counts the number of flashes after 100 steps.",
-        "I Will find out.",
+        "Counts the number of iterartions before all octopi flash.",
+    ).arg(
+        Arg::with_name("simulation-parameters")
+            .short("s")
+            .help(
+                "How long the octopi should be simulated for. The functions available are as follows:\n\n\
+            one-hundred-steps: Counts the number of flashes that happen after 100 steps.\n\n\
+            synchronized-flashes: Counts the number of steps needed before all octopi flash at once.\n\n",
+            )
+            .takes_value(true)
+            .possible_values(&SimulationParameters::VARIANTS)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> DumboOctopusArgs {
     match arguments.subcommand_name() {
-        Some("part1") => DumboOctopusArgs {},
-        Some("part2") => DumboOctopusArgs {},
-        _ => DumboOctopusArgs {},
+        Some("part1") => DumboOctopusArgs {
+            simulation_parameters: SimulationParameters::OneHundredSteps,
+        },
+        Some("part2") => DumboOctopusArgs {
+            simulation_parameters: SimulationParameters::SynchronizedFlashes,
+        },
+        _ => DumboOctopusArgs {
+            simulation_parameters: value_t_or_exit!(
+                arguments.value_of("simulation-parameters"),
+                SimulationParameters
+            ),
+        },
     }
 }
 
 fn run(arguments: DumboOctopusArgs, octopi: Vec<Vec<usize>>) -> CommandResult {
-    count_flashes_after_100_steps(octopi).into()
+    match arguments.simulation_parameters {
+        SimulationParameters::OneHundredSteps => count_flashes_after_100_steps(octopi),
+        SimulationParameters::SynchronizedFlashes => first_iteration_where_all_flash(octopi),
+    }
+    .into()
+}
+
+fn first_iteration_where_all_flash(mut octopi: Vec<Vec<usize>>) -> usize {
+    let mut i = 0usize;
+    loop {
+        i += 1;
+        let (new_octopi, _) = run_step(&octopi);
+        octopi = new_octopi;
+        if octopi
+            .iter()
+            .all(|row| row.iter().all(|octopus| *octopus == 0usize))
+        {
+            break;
+        }
+    }
+    i.into()
 }
 
 fn count_flashes_after_100_steps(mut octopi: Vec<Vec<usize>>) -> usize {
