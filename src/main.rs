@@ -7,9 +7,10 @@ mod hydrothermal_venture;
 mod lanternfish;
 mod lib;
 mod seven_segment;
-mod sonar_sweep;
-mod whale_treachery;
 mod smoke_basin;
+mod sonar_sweep;
+mod syntax_scoring;
+mod whale_treachery;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -32,6 +33,7 @@ lazy_static! {
         Box::new(whale_treachery::WHALE_TREACHERY),
         Box::new(seven_segment::SEVEN_SEGMENT),
         Box::new(smoke_basin::SMOKE_BASIN),
+        Box::new(syntax_scoring::SYNTAX_SCORING),
     ];
 }
 
