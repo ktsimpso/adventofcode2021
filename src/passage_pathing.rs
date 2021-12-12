@@ -41,7 +41,7 @@ pub enum Cave<'a> {
 struct Journey<'a> {
     visited_caves: HashSet<Cave<'a>>,
     caves: Vec<Cave<'a>>,
-    small_cave: Option<Cave<'a>>,
+    reuse_small_cave: bool,
 }
 
 fn sub_command() -> App<'static, 'static> {
@@ -102,16 +102,10 @@ fn run(arguments: PassagePathingArgs, paths: Vec<(Cave<'static>, Cave<'static>)>
         },
     );
 
-    let small_cave = if arguments.reuse_small_cave {
-        Option::None
-    } else {
-        Option::Some(Cave::Start)
-    };
-
     let mut start = Journey {
         visited_caves: HashSet::new(),
         caves: vec![Cave::Start],
-        small_cave: small_cave,
+        reuse_small_cave: arguments.reuse_small_cave,
     };
 
     start.visited_caves.insert(Cave::Start);
@@ -130,14 +124,13 @@ fn find_all_journies(
         .map(|cave| match cave {
             Cave::Small { name: _ } => {
                 if journey.visited_caves.contains(cave) {
-                    match journey.small_cave {
-                        Option::Some(_) => Vec::new(),
-                        Option::None => {
-                            let mut new_journey = journey.clone();
-                            new_journey.caves.push(*cave);
-                            new_journey.small_cave = Option::Some(*cave);
-                            find_all_journies(&cave_paths, new_journey)
-                        }
+                    if journey.reuse_small_cave {
+                        let mut new_journey = journey.clone();
+                        new_journey.caves.push(*cave);
+                        new_journey.reuse_small_cave = false;
+                        find_all_journies(&cave_paths, new_journey)
+                    } else {
+                        Vec::new()
                     }
                 } else {
                     let mut new_journey = journey.clone();
