@@ -12,6 +12,7 @@ mod seven_segment;
 mod smoke_basin;
 mod sonar_sweep;
 mod syntax_scoring;
+mod transparent_origami;
 mod whale_treachery;
 
 use anyhow::Error;
@@ -38,6 +39,7 @@ lazy_static! {
         Box::new(syntax_scoring::SYNTAX_SCORING),
         Box::new(dumbo_octopus::DUMBO_OCTOPUS),
         Box::new(passage_pathing::PASSAGE_PATHING),
+        Box::new(transparent_origami::TRANSPARENT_ORIGAMI),
     ];
 }
 
