@@ -14,6 +14,7 @@ mod sonar_sweep;
 mod syntax_scoring;
 mod transparent_origami;
 mod whale_treachery;
+mod extended_polymerization;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -40,6 +41,7 @@ lazy_static! {
         Box::new(dumbo_octopus::DUMBO_OCTOPUS),
         Box::new(passage_pathing::PASSAGE_PATHING),
         Box::new(transparent_origami::TRANSPARENT_ORIGAMI),
+        Box::new(extended_polymerization::EXTENDED_POLYMERIZATION),
     ];
 }
 
