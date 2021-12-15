@@ -15,6 +15,7 @@ mod syntax_scoring;
 mod transparent_origami;
 mod whale_treachery;
 mod extended_polymerization;
+mod chiton;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -42,6 +43,7 @@ lazy_static! {
         Box::new(passage_pathing::PASSAGE_PATHING),
         Box::new(transparent_origami::TRANSPARENT_ORIGAMI),
         Box::new(extended_polymerization::EXTENDED_POLYMERIZATION),
+        Box::new(chiton::CHITON),
     ];
 }
 
