@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::{tag, take},
@@ -8,6 +8,8 @@ use nom::{
     sequence::{preceded, tuple},
     IResult,
 };
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const PACKET_DECODER: Problem<PacketDecoderArgs, Packet> = Problem::new(
     sub_command,
@@ -19,7 +21,16 @@ pub const PACKET_DECODER: Problem<PacketDecoderArgs, Packet> = Problem::new(
 );
 
 #[derive(Debug)]
-pub struct PacketDecoderArgs {}
+pub struct PacketDecoderArgs {
+    operation: Operation,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum Operation {
+    SumVersions,
+    ProcessPacket,
+}
 
 #[derive(Debug)]
 pub struct Packet {
@@ -40,20 +51,88 @@ fn sub_command() -> App<'static, 'static> {
         "Parses a packet then performs some operation on the result",
         "Hex encode string of the packet.",
         "Parses the packet, then sums all the versions inside.",
-        "I will find out.",
+        "Parses the packet, then performs all operations inside and returns the result.",
+    ).arg(
+        Arg::with_name("operation")
+            .short("o")
+            .help(
+                "The type of operation to perform on the packet. The operations available are as follows:\n\n\
+            sum-versions: Sums all version values in the packet.\n\n\
+            process-packet: Processes the instructions of the packet.\n\n",
+            )
+            .takes_value(true)
+            .possible_values(&Operation::VARIANTS)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> PacketDecoderArgs {
     match arguments.subcommand_name() {
-        Some("part1") => PacketDecoderArgs {},
-        Some("part2") => PacketDecoderArgs {},
-        _ => PacketDecoderArgs {},
+        Some("part1") => PacketDecoderArgs {
+            operation: Operation::SumVersions,
+        },
+        Some("part2") => PacketDecoderArgs {
+            operation: Operation::ProcessPacket,
+        },
+        _ => PacketDecoderArgs {
+            operation: value_t_or_exit!(arguments.value_of("operation"), Operation),
+        },
     }
 }
 
 fn run(arguments: PacketDecoderArgs, packet: Packet) -> CommandResult {
-    sum_packet_versions(&packet).into()
+    match arguments.operation {
+        Operation::SumVersions => sum_packet_versions(&packet),
+        Operation::ProcessPacket => process_packet(&packet),
+    }
+    .into()
+}
+
+fn process_packet(packet: &Packet) -> usize {
+    match &packet.packet_contents {
+        PacketContents::Literal { value } => *value,
+        PacketContents::Operator { sub_packets } => {
+            if packet.type_id == 0 {
+                sub_packets
+                    .iter()
+                    .map(process_packet)
+                    .fold(0usize, |acc, result| acc + result)
+            } else if packet.type_id == 1 {
+                sub_packets
+                    .iter()
+                    .map(process_packet)
+                    .fold(1usize, |acc, result| acc * result)
+            } else if packet.type_id == 2 {
+                sub_packets.iter().map(process_packet).min().unwrap()
+            } else if packet.type_id == 3 {
+                sub_packets.iter().map(process_packet).max().unwrap()
+            } else if packet.type_id == 5 {
+                let first = sub_packets.first().map(process_packet).unwrap();
+                let second = sub_packets.last().map(process_packet).unwrap();
+                if first > second {
+                    1usize
+                } else {
+                    0usize
+                }
+            } else if packet.type_id == 6 {
+                let first = sub_packets.first().map(process_packet).unwrap();
+                let second = sub_packets.last().map(process_packet).unwrap();
+                if first < second {
+                    1usize
+                } else {
+                    0usize
+                }
+            } else {
+                let first = sub_packets.first().map(process_packet).unwrap();
+                let second = sub_packets.last().map(process_packet).unwrap();
+                if first == second {
+                    1usize
+                } else {
+                    0usize
+                }
+            }
+        }
+    }
 }
 
 fn sum_packet_versions(packet: &Packet) -> usize {
