@@ -18,6 +18,7 @@ mod whale_treachery;
 mod extended_polymerization;
 mod chiton;
 mod packet_decoder;
+mod trick_shot;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -47,6 +48,7 @@ lazy_static! {
         Box::new(extended_polymerization::EXTENDED_POLYMERIZATION),
         Box::new(chiton::CHITON),
         Box::new(packet_decoder::PACKET_DECODER),
+        Box::new(trick_shot::TRICK_SHOT),
     ];
 }
 

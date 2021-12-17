@@ -2,6 +2,10 @@
 
 use anyhow::Error;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::combinator::recognize;
+use nom::sequence::pair;
 use nom::{character::complete::digit1, combinator::map_res, IResult};
 use simple_error::SimpleError;
 use std::fmt;
@@ -148,6 +152,14 @@ where
 pub fn parse_usize(input: &str) -> IResult<&str, usize> {
     map_res(digit1, usisze_from_string)(input)
 }
+
+pub fn parse_isize(input: &str) -> IResult<&str, isize> {
+    map_res(
+        recognize(pair(alt((tag("+"), tag("-"), tag(""))), digit1)),
+        |value| isize::from_str_radix(value, 10),
+    )(input)
+}
+
 
 fn usisze_from_string(input: &str) -> Result<usize, Error> {
     usize::from_str_radix(input, 10).map_err(|err| err.into())
