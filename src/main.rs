@@ -1,4 +1,5 @@
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(map_first_last)]
 
 mod binary_diagnostic;
 mod dive;
