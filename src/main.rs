@@ -17,6 +17,7 @@ mod transparent_origami;
 mod whale_treachery;
 mod extended_polymerization;
 mod chiton;
+mod packet_decoder;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -45,6 +46,7 @@ lazy_static! {
         Box::new(transparent_origami::TRANSPARENT_ORIGAMI),
         Box::new(extended_polymerization::EXTENDED_POLYMERIZATION),
         Box::new(chiton::CHITON),
+        Box::new(packet_decoder::PACKET_DECODER),
     ];
 }
 
