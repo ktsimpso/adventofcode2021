@@ -1,6 +1,6 @@
 [package]
 name = "adventofcode2021"
-version = "0.17.0"
+version = "0.17.1"
 authors = ["Kevin Simpson <ktsimpso@gmail.com>"]
 edition = "2021"
 
@@ -14,3 +14,4 @@ strum = "0.23"
 strum_macros = "0.23"
 nom = "7.1.0"
 lazy_static = "1.4.0"
+num-integer = "0.1.44"
