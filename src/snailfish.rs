@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -9,6 +9,9 @@ use nom::{
     sequence::{preceded, separated_pair, terminated},
     IResult,
 };
+use std::cmp;
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const SNAILFISH: Problem<SnailfishArgs, Vec<Pair>> = Problem::new(
     sub_command,
@@ -20,7 +23,16 @@ pub const SNAILFISH: Problem<SnailfishArgs, Vec<Pair>> = Problem::new(
 );
 
 #[derive(Debug)]
-pub struct SnailfishArgs {}
+pub struct SnailfishArgs {
+    question: Question,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum Question {
+    SumAll,
+    MaxSum,
+}
 
 #[derive(Debug, Clone)]
 enum SnailNumber {
@@ -39,26 +51,58 @@ fn sub_command() -> App<'static, 'static> {
         &SNAILFISH,
         "Takes a list of pair numbers then performs calculations on them.",
         "Path to the input file. Input should be newline delimited pairs.",
-        "Sums all the pairs, then finds the magnetude.",
-        "I will find out.",
+        "Sums all the pairs, then finds the magnitude for the default input.",
+        "Sums each combination of pair then finds the maximum magnitude for the default input.",
+    ).arg(
+        Arg::with_name("question")
+            .short("q")
+            .help(
+                "The question to answer requests. The questions available are as follows:\n\n\
+            sum-all: Sums all pairs, then finds the magnitude.\n\n\
+            max-sum: Checks each combination of pairs and returns the magnitude of the max sum.\n\n",
+            )
+            .takes_value(true)
+            .possible_values(&Question::VARIANTS)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> SnailfishArgs {
     match arguments.subcommand_name() {
-        Some("part1") => SnailfishArgs {},
-        Some("part2") => SnailfishArgs {},
-        _ => SnailfishArgs {},
+        Some("part1") => SnailfishArgs {
+            question: Question::SumAll,
+        },
+        Some("part2") => SnailfishArgs {
+            question: Question::MaxSum,
+        },
+        _ => SnailfishArgs {
+            question: value_t_or_exit!(arguments.value_of("question"), Question),
+        },
     }
 }
 
 fn run(arguments: SnailfishArgs, pairs: Vec<Pair>) -> CommandResult {
-    pairs
-        .into_iter()
-        .reduce(add)
-        .map(|pair| magnitude(&pair))
-        .unwrap()
-        .into()
+    match arguments.question {
+        Question::SumAll => pairs
+            .into_iter()
+            .reduce(add)
+            .map(|pair| magnitude(&pair))
+            .unwrap(),
+        Question::MaxSum => {
+            let mut max = 0usize;
+            for i in 0..(pairs.len() - 1usize) {
+                for j in i..pairs.len() {
+                    let first = magnitude(&add(pairs[i].clone(), pairs[j].clone()));
+                    let second = magnitude(&add(pairs[j].clone(), pairs[i].clone()));
+                    max = cmp::max(first, max);
+                    max = cmp::max(second, max);
+                }
+            }
+
+            max
+        }
+    }
+    .into()
 }
 
 fn add(left: Pair, right: Pair) -> Pair {
@@ -89,38 +133,7 @@ fn add(left: Pair, right: Pair) -> Pair {
 }
 
 fn explode(pair: Pair, depth: usize) -> (Pair, bool, Option<usize>, Option<usize>) {
-    let (mut left, did_explode, left_carry, right_carry) = match pair.left {
-        SnailNumber::Literal(value) => (
-            SnailNumber::Literal(value),
-            false,
-            Option::None,
-            Option::None,
-        ),
-        SnailNumber::Number(value) => {
-            if depth == 3 {
-                (
-                    SnailNumber::Literal(0usize),
-                    true,
-                    Option::Some(match value.left {
-                        SnailNumber::Literal(value) => value,
-                        _ => 0usize,
-                    }),
-                    Option::Some(match value.right {
-                        SnailNumber::Literal(value) => value,
-                        _ => 0usize,
-                    }),
-                )
-            } else {
-                let (result, did_explode, left_carry, right_carry) = explode(*value, depth + 1);
-                (
-                    SnailNumber::Number(Box::new(result)),
-                    did_explode,
-                    left_carry,
-                    right_carry,
-                )
-            }
-        }
-    };
+    let (mut left, did_explode, left_carry, right_carry) = explode_snail_number(pair.left, &depth);
 
     if did_explode {
         let right = match pair.right {
@@ -147,7 +160,29 @@ fn explode(pair: Pair, depth: usize) -> (Pair, bool, Option<usize>, Option<usize
         );
     }
 
-    let (right, did_explode, left_carry, right_carry) = match pair.right {
+    let (right, did_explode, left_carry, right_carry) = explode_snail_number(pair.right, &depth);
+
+    left = match left_carry {
+        Option::Some(value) => add_to_furthest_available_right(left, value),
+        Option::None => left,
+    };
+
+    (
+        Pair {
+            left: left,
+            right: right,
+        },
+        did_explode,
+        Option::None,
+        right_carry,
+    )
+}
+
+fn explode_snail_number(
+    snail_number: SnailNumber,
+    depth: &usize,
+) -> (SnailNumber, bool, Option<usize>, Option<usize>) {
+    match snail_number {
         SnailNumber::Literal(value) => (
             SnailNumber::Literal(value),
             false,
@@ -155,7 +190,7 @@ fn explode(pair: Pair, depth: usize) -> (Pair, bool, Option<usize>, Option<usize
             Option::None,
         ),
         SnailNumber::Number(value) => {
-            if depth == 3 {
+            if depth == &3usize {
                 (
                     SnailNumber::Literal(0usize),
                     true,
@@ -178,22 +213,7 @@ fn explode(pair: Pair, depth: usize) -> (Pair, bool, Option<usize>, Option<usize
                 )
             }
         }
-    };
-
-    left = match left_carry {
-        Option::Some(value) => add_to_furthest_available_right(left, value),
-        Option::None => left,
-    };
-
-    (
-        Pair {
-            left: left,
-            right: right,
-        },
-        did_explode,
-        Option::None,
-        right_carry,
-    )
+    }
 }
 
 fn add_to_first_available_left(pair: Pair, carry: usize) -> Pair {
@@ -268,17 +288,17 @@ fn split_snail_number(snail_number: SnailNumber) -> (SnailNumber, bool) {
 }
 
 fn magnitude(pair: &Pair) -> usize {
-    let left = 3 * match &pair.left {
-        SnailNumber::Literal(value) => *value,
-        SnailNumber::Number(value) => magnitude(value),
-    };
-
-    let right = 2 * match &pair.right {
-        SnailNumber::Literal(value) => *value,
-        SnailNumber::Number(value) => magnitude(value),
-    };
+    let left = 3 * magnitude_snail_number(&pair.left);
+    let right = 2 * magnitude_snail_number(&pair.right);
 
     left + right
+}
+
+fn magnitude_snail_number(snail_number: &SnailNumber) -> usize {
+    match &snail_number {
+        SnailNumber::Literal(value) => *value,
+        SnailNumber::Number(value) => magnitude(value),
+    }
 }
 
 fn parse_data(input: &String) -> IResult<&str, Vec<Pair>> {

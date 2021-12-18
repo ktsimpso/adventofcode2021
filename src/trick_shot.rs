@@ -46,7 +46,7 @@ fn sub_command() -> App<'static, 'static> {
         "Path to the input file. Input should be the target area.",
         "Finds the maximum height that can be acheived while still hitting the target for the default input.",
         "Finds the total number of valid trajectories with the default input.",
-    )    .arg(
+    ).arg(
         Arg::with_name("metric")
             .short("m")
             .help(
