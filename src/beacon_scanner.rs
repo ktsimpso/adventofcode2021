@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, parse_isize, parse_usize, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag,
     character::complete::newline,
@@ -10,9 +10,11 @@ use nom::{
 };
 use num_integer::Roots;
 use std::{
-    cmp::min,
+    cmp::{max, min},
     collections::{HashMap, HashSet},
 };
+use strum::VariantNames;
+use strum_macros::{EnumString, EnumVariantNames};
 
 pub const BEACON_SCANNER: Problem<BeaconScannerArgs, Vec<Scanner>> = Problem::new(
     sub_command,
@@ -24,7 +26,16 @@ pub const BEACON_SCANNER: Problem<BeaconScannerArgs, Vec<Scanner>> = Problem::ne
 );
 
 #[derive(Debug)]
-pub struct BeaconScannerArgs {}
+pub struct BeaconScannerArgs {
+    signal: Signal,
+}
+
+#[derive(Debug, EnumString, EnumVariantNames)]
+#[strum(serialize_all = "kebab_case")]
+enum Signal {
+    BeaconCount,
+    MaxScannerDistance,
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Point {
@@ -35,30 +46,47 @@ struct Point {
 
 #[derive(Debug, Clone)]
 pub struct Scanner {
-    number: usize,
     beacons: Vec<Point>,
 }
 
 fn sub_command() -> App<'static, 'static> {
     default_sub_command(
         &BEACON_SCANNER,
-        "Counts every time the number in the input increases between each sample",
-        "Path to the input file. Input should be newline delimited integers.",
-        "Searches the default input with a sample size of 1.",
-        "I will find out.",
+        "Coorilates all beacon and scanner signals and computes stats.",
+        "Path to the input file. Input should be scanner results.",
+        "Finds the total number of beacons for the default input.",
+        "Finds the largest distance between two scanners for the default input.",
+    ).arg(
+        Arg::with_name("signal")
+            .short("s")
+            .help(
+                "The signal to determine. The questions available are as follows:\n\n\
+            beacon-count: Returns the total number of beacons.\n\n\
+            max-scanner-distance: Returns the maximum hamiltonian distance between all scanners.\n\n",
+            )
+            .takes_value(true)
+            .possible_values(&Signal::VARIANTS)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> BeaconScannerArgs {
     match arguments.subcommand_name() {
-        Some("part1") => BeaconScannerArgs {},
-        Some("part2") => BeaconScannerArgs {},
-        _ => BeaconScannerArgs {},
+        Some("part1") => BeaconScannerArgs {
+            signal: Signal::BeaconCount,
+        },
+        Some("part2") => BeaconScannerArgs {
+            signal: Signal::MaxScannerDistance,
+        },
+        _ => BeaconScannerArgs {
+            signal: value_t_or_exit!(arguments.value_of("signal"), Signal),
+        },
     }
 }
 
 fn run(arguments: BeaconScannerArgs, mut scanners: Vec<Scanner>) -> CommandResult {
     let reference = scanners.remove(0);
+    let mut scanner_points = vec![Point { x: 0, y: 0, z: 0 }];
     let mut beacons: HashSet<Point> = reference
         .beacons
         .iter()
@@ -91,14 +119,22 @@ fn run(arguments: BeaconScannerArgs, mut scanners: Vec<Scanner>) -> CommandResul
                             })
                             .collect();
 
-                        rotated_points
+                        (
+                            rotated_points,
+                            Point {
+                                x: -x_diff,
+                                y: -y_diff,
+                                z: -z_diff,
+                            },
+                        )
                     })
-                    .find(|rotations| {
+                    .find(|(rotations, scanner_position)| {
                         let mut new_beacons = beacons.clone();
                         new_beacons.extend(rotations);
                         if new_beacons.len() < (beacons.len() + rotations.len() - 11) {
                             beacons = new_beacons;
                             scanners.remove(index);
+                            scanner_points.push(scanner_position.to_owned());
                             true
                         } else {
                             false
@@ -109,7 +145,23 @@ fn run(arguments: BeaconScannerArgs, mut scanners: Vec<Scanner>) -> CommandResul
         };
     }
 
-    beacons.len().into()
+    match arguments.signal {
+        Signal::BeaconCount => beacons.len().into(),
+        Signal::MaxScannerDistance => {
+            let mut maximum = 0isize;
+            for i in 0..(scanner_points.len() - 1) {
+                for j in (i + 1)..scanner_points.len() {
+                    let left = scanner_points.get(i).expect("Bounds checked");
+                    let right = scanner_points.get(j).expect("Bounds checked");
+                    let result = (left.x - right.x).abs()
+                        + (left.y - right.y).abs()
+                        + (left.z - right.z).abs();
+                    maximum = max(result, maximum);
+                }
+            }
+            maximum.into()
+        }
+    }
 }
 
 fn does_scanner_overlap(
@@ -398,10 +450,7 @@ fn parse_scanner(input: &str) -> IResult<&str, Scanner> {
             terminated(parse_scanner_number, newline),
             separated_list0(newline, parse_point),
         )),
-        |(number, points)| Scanner {
-            number: number,
-            beacons: points,
-        },
+        |(_, points)| Scanner { beacons: points },
     )(input)
 }
 
