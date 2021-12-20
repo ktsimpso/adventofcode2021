@@ -1,25 +1,27 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(map_first_last)]
+#![feature(fn_traits)]
 
+mod beacon_scanner;
 mod binary_diagnostic;
+mod chiton;
 mod dive;
 mod dumbo_octopus;
+mod extended_polymerization;
 mod giant_squid;
 mod hydrothermal_venture;
 mod lanternfish;
 mod lib;
+mod packet_decoder;
 mod passage_pathing;
 mod seven_segment;
 mod smoke_basin;
+mod snailfish;
 mod sonar_sweep;
 mod syntax_scoring;
 mod transparent_origami;
-mod whale_treachery;
-mod extended_polymerization;
-mod chiton;
-mod packet_decoder;
 mod trick_shot;
-mod snailfish;
+mod whale_treachery;
 
 use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
@@ -51,6 +53,7 @@ lazy_static! {
         Box::new(packet_decoder::PACKET_DECODER),
         Box::new(trick_shot::TRICK_SHOT),
         Box::new(snailfish::SNAILFISH),
+        Box::new(beacon_scanner::BEACON_SCANNER),
     ];
 }
 
