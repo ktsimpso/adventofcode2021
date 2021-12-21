@@ -30,7 +30,7 @@ use clap::{value_t_or_exit, App, AppSettings};
 extern crate lazy_static;
 use lib::Command;
 use simple_error::SimpleError;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -91,10 +91,14 @@ fn main() -> Result<(), Error> {
                     ),
                 };
 
-                command.run(args, &file)
+                let now = Instant::now();
+                let result = command.run(args, &file);
+                let elapsed = now.elapsed();
+                result.map(|r| (r, elapsed))
             })
-            .map(|result| {
+            .map(|(result, elapsed)| {
                 println!("{:#?}", result);
+                println!("Took {:#?} to run", elapsed);
             })
             .map(|_| ())
     } else {
