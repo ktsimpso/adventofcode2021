@@ -1,5 +1,5 @@
 use crate::lib::{default_sub_command, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -20,7 +20,9 @@ pub const TRENCH_MAP: Problem<TrenchMapArgs, TrenchMap> = Problem::new(
 );
 
 #[derive(Debug)]
-pub struct TrenchMapArgs {}
+pub struct TrenchMapArgs {
+    n: usize,
+}
 
 #[derive(Debug)]
 pub struct TrenchMap {
@@ -40,15 +42,23 @@ fn sub_command() -> App<'static, 'static> {
         "Ecnhances an image then counts the number of Light pixels in the images.",
         "Path to the input file. Input should be the image enhancement algorithm followed by the image data.",
         "Enchances the image in the default input twice.",
-        "I will find out.",
+        "Enchances the image in the default input 50 times.",
+    ).arg(
+        Arg::with_name("number")
+            .short("n")
+            .help("Number of times to enchance the image.")
+            .takes_value(true)
+            .required(true),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> TrenchMapArgs {
     match arguments.subcommand_name() {
-        Some("part1") => TrenchMapArgs {},
-        Some("part2") => TrenchMapArgs {},
-        _ => TrenchMapArgs {},
+        Some("part1") => TrenchMapArgs { n: 2usize },
+        Some("part2") => TrenchMapArgs { n: 50usize },
+        _ => TrenchMapArgs {
+            n: value_t_or_exit!(arguments.value_of("number"), usize),
+        },
     }
 }
 
@@ -56,7 +66,7 @@ fn run(arguments: TrenchMapArgs, trench_map: TrenchMap) -> CommandResult {
     let mut new_image = trench_map.image.clone();
     let mut expand_pixels = Pixel::Dark;
 
-    for _ in 0..2usize {
+    for _ in 0..arguments.n {
         new_image = expand_image(&new_image, &expand_pixels);
         new_image = new_image
             .iter()
