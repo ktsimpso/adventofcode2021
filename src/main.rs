@@ -5,6 +5,7 @@
 mod beacon_scanner;
 mod binary_diagnostic;
 mod chiton;
+mod dirac_dice;
 mod dive;
 mod dumbo_octopus;
 mod extended_polymerization;
@@ -56,6 +57,7 @@ lazy_static! {
         Box::new(snailfish::SNAILFISH),
         Box::new(beacon_scanner::BEACON_SCANNER),
         Box::new(trench_map::TRENCH_MAP),
+        Box::new(dirac_dice::DIRAC_DICE),
     ];
 }
 

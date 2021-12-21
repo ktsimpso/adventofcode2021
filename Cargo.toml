@@ -1,6 +1,6 @@
 [package]
 name = "adventofcode2021"
-version = "0.20.2"
+version = "0.21.0"
 authors = ["Kevin Simpson <ktsimpso@gmail.com>"]
 edition = "2021"
 
