@@ -20,6 +20,7 @@ mod snailfish;
 mod sonar_sweep;
 mod syntax_scoring;
 mod transparent_origami;
+mod trench_map;
 mod trick_shot;
 mod whale_treachery;
 
@@ -54,6 +55,7 @@ lazy_static! {
         Box::new(trick_shot::TRICK_SHOT),
         Box::new(snailfish::SNAILFISH),
         Box::new(beacon_scanner::BEACON_SCANNER),
+        Box::new(trench_map::TRENCH_MAP),
     ];
 }
 
