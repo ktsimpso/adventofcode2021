@@ -37,7 +37,6 @@ enum GameType {
 
 #[derive(Debug)]
 pub struct Player {
-    player_number: usize,
     starting_position: usize,
 }
 
@@ -255,8 +254,7 @@ fn parse_player(input: &str) -> IResult<&str, Player> {
             preceded(tag("Player "), parse_usize),
             preceded(tag(" starting position: "), parse_usize),
         )),
-        |(player_number, starting_position)| Player {
-            player_number: player_number,
+        |(_, starting_position)| Player {
             starting_position: starting_position,
         },
     )(input)
