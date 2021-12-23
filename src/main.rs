@@ -15,6 +15,7 @@ mod lanternfish;
 mod lib;
 mod packet_decoder;
 mod passage_pathing;
+mod reactor_reboot;
 mod seven_segment;
 mod smoke_basin;
 mod snailfish;
@@ -58,6 +59,7 @@ lazy_static! {
         Box::new(beacon_scanner::BEACON_SCANNER),
         Box::new(trench_map::TRENCH_MAP),
         Box::new(dirac_dice::DIRAC_DICE),
+        Box::new(reactor_reboot::REACTOR_REBOOT),
     ];
 }
 
