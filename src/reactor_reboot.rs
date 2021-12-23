@@ -1,10 +1,5 @@
-use std::{
-    cmp::{max, min},
-    collections::HashSet,
-};
-
 use crate::lib::{default_sub_command, parse_isize, CommandResult, Problem};
-use clap::{App, ArgMatches};
+use clap::{App, Arg, ArgMatches};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -13,6 +8,10 @@ use nom::{
     multi::separated_list0,
     sequence::{preceded, tuple},
     IResult,
+};
+use std::{
+    cmp::{max, min},
+    collections::HashSet,
 };
 
 pub const REACTOR_REBOOT: Problem<ReactorRebootArgs, Vec<RebootStep>> = Problem::new(
@@ -25,7 +24,9 @@ pub const REACTOR_REBOOT: Problem<ReactorRebootArgs, Vec<RebootStep>> = Problem:
 );
 
 #[derive(Debug)]
-pub struct ReactorRebootArgs {}
+pub struct ReactorRebootArgs {
+    limit_cubes: bool,
+}
 
 #[derive(Debug)]
 pub struct RebootStep {
@@ -46,59 +47,387 @@ struct Range {
     high: isize,
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct Point {
-    x: isize,
-    y: isize,
-    z: isize,
-}
-
 fn sub_command() -> App<'static, 'static> {
     default_sub_command(
         &REACTOR_REBOOT,
         "Follows the reboot steps then reports the number of turned on cubes.",
         "Path to the input file. Input should be a newline delimited set of reboot instructions.",
-        "Searches the default input with a sample size of 1.",
-        "I will find out.",
+        "Finds all on cubes within a limited region for the default input.",
+        "Finds all on cubes for the default input.",
+    )
+    .arg(
+        Arg::with_name("limit-cubes")
+            .short("l")
+            .help("If passed, limits the area considered to -50, 50 for all dimensions."),
     )
 }
 
 fn parse_arguments(arguments: &ArgMatches) -> ReactorRebootArgs {
     match arguments.subcommand_name() {
-        Some("part1") => ReactorRebootArgs {},
-        Some("part2") => ReactorRebootArgs {},
-        _ => ReactorRebootArgs {},
+        Some("part1") => ReactorRebootArgs { limit_cubes: true },
+        Some("part2") => ReactorRebootArgs { limit_cubes: false },
+        _ => ReactorRebootArgs {
+            limit_cubes: arguments.is_present("limit-cubes"),
+        },
     }
 }
 
 fn run(arguments: ReactorRebootArgs, reboot_steps: Vec<RebootStep>) -> CommandResult {
-    let filtered_steps: Vec<RebootStep> = reboot_steps
-        .into_iter()
-        .filter(|step| is_step_within_target(step, -50isize, 50isize))
-        .collect();
-    run_steps(filtered_steps).len().into()
+    let filtered_steps: Vec<RebootStep> = if arguments.limit_cubes {
+        reboot_steps
+            .into_iter()
+            .filter(|step| is_step_within_target(step, -50isize, 50isize))
+            .collect()
+    } else {
+        reboot_steps
+    };
+
+    run_steps(filtered_steps)
+        .iter()
+        .map(get_cuboid_size)
+        .fold(0isize, |acc, value| acc + value)
+        .into()
 }
 
-fn run_steps(reboot_steps: Vec<RebootStep>) -> HashSet<Point> {
-    let mut on_points = HashSet::new();
+fn run_steps(reboot_steps: Vec<RebootStep>) -> HashSet<Cuboid> {
+    let mut on_cubes = HashSet::new();
 
     reboot_steps.into_iter().for_each(|step| {
-        for x in step.cuboid.x_range.low..=step.cuboid.x_range.high {
-            for y in step.cuboid.y_range.low..=step.cuboid.y_range.high {
-                for z in step.cuboid.z_range.low..=step.cuboid.z_range.high {
-                    let point = Point { x: x, y: y, z: z };
-
-                    if step.turn_on {
-                        on_points.insert(point);
-                    } else {
-                        on_points.remove(&point);
-                    };
-                }
-            }
+        on_cubes = on_cubes
+            .iter()
+            .map(|cube| match get_cuboid_intersection(&cube, &step.cuboid) {
+                Option::Some(intersection) => fracture_cuboid(&cube, &intersection),
+                Option::None => vec![*cube],
+            })
+            .flatten()
+            .collect();
+        if step.turn_on {
+            on_cubes.insert(step.cuboid);
         }
     });
 
-    on_points
+    on_cubes
+}
+
+fn get_cuboid_size(cuboid: &Cuboid) -> isize {
+    get_range_size(&cuboid.x_range)
+        * get_range_size(&cuboid.y_range)
+        * get_range_size(&cuboid.z_range)
+}
+
+fn get_range_size(range: &Range) -> isize {
+    range.high - range.low + 1
+}
+
+// breaks this base cuboid into up to 26 individual cubes with the region specified by the sub_cube not represented.
+fn fracture_cuboid(base: &Cuboid, sub_cube: &Cuboid) -> Vec<Cuboid> {
+    let x_high_range = get_high_range(&base.x_range, &sub_cube.x_range);
+    let x_low_range = get_low_range(&base.x_range, &sub_cube.x_range);
+
+    let y_high_range = get_high_range(&base.y_range, &sub_cube.y_range);
+    let y_low_range = get_low_range(&base.y_range, &sub_cube.y_range);
+
+    let z_high_range = get_high_range(&base.z_range, &sub_cube.z_range);
+    let z_low_range = get_low_range(&base.z_range, &sub_cube.z_range);
+
+    let mut ranges = Vec::new();
+
+    // ==================== top ====================
+    // top middle middle
+    ranges.push(match z_high_range {
+        Option::Some(z_range) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // top middle right
+    ranges.push(match (z_high_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(x_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // top middle left
+    ranges.push(match (z_high_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(x_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // top top middle
+    ranges.push(match (z_high_range, y_high_range) {
+        (Option::Some(z_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // top low middle
+    ranges.push(match (z_high_range, y_low_range) {
+        (Option::Some(z_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // top top right
+    ranges.push(match (z_high_range, y_high_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // top top left
+    ranges.push(match (z_high_range, y_high_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // top low right
+    ranges.push(match (z_high_range, y_low_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // top low left
+    ranges.push(match (z_high_range, y_low_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // ==================== middle ====================
+    // middle middle right
+    ranges.push(match x_high_range {
+        Option::Some(x_range) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle middle left
+    ranges.push(match x_low_range {
+        Option::Some(x_range) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle top middle
+    ranges.push(match y_high_range {
+        Option::Some(y_range) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle bottom middle
+    ranges.push(match y_low_range {
+        Option::Some(y_range) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle top right
+    ranges.push(match (x_high_range, y_high_range) {
+        (Option::Some(x_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle top left
+    ranges.push(match (x_low_range, y_high_range) {
+        (Option::Some(x_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle bottom right
+    ranges.push(match (x_high_range, y_low_range) {
+        (Option::Some(x_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // middle bottom left
+    ranges.push(match (x_low_range, y_low_range) {
+        (Option::Some(x_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: y_range,
+            z_range: sub_cube.z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // ==================== bottom ====================
+    // low middle middle
+    ranges.push(match z_low_range {
+        Option::Some(z_range) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // low middle right
+    ranges.push(match (z_low_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(x_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // low middle left
+    ranges.push(match (z_low_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(x_range)) => Option::Some(Cuboid {
+            x_range: x_range,
+            y_range: sub_cube.y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // low top middle
+    ranges.push(match (z_low_range, y_high_range) {
+        (Option::Some(z_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // low low middle
+    ranges.push(match (z_low_range, y_low_range) {
+        (Option::Some(z_range), Option::Some(y_range)) => Option::Some(Cuboid {
+            x_range: sub_cube.x_range,
+            y_range: y_range,
+            z_range: z_range,
+        }),
+        _ => Option::None,
+    });
+
+    // low top right
+    ranges.push(match (z_low_range, y_high_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // low top left
+    ranges.push(match (z_low_range, y_high_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // low low right
+    ranges.push(match (z_low_range, y_low_range, x_high_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    // low low left
+    ranges.push(match (z_low_range, y_low_range, x_low_range) {
+        (Option::Some(z_range), Option::Some(y_range), Option::Some(x_range)) => {
+            Option::Some(Cuboid {
+                x_range: x_range,
+                y_range: y_range,
+                z_range: z_range,
+            })
+        }
+        _ => Option::None,
+    });
+
+    ranges
+        .into_iter()
+        .map(Option::into_iter)
+        .flatten()
+        .collect()
+}
+
+fn get_high_range(base: &Range, sub_range: &Range) -> Option<Range> {
+    let low = sub_range.high + 1;
+    let high = base.high;
+    get_range_from_low_high(low, high)
+}
+
+fn get_low_range(base: &Range, sub_range: &Range) -> Option<Range> {
+    let high = sub_range.low - 1;
+    let low = base.low;
+    get_range_from_low_high(low, high)
 }
 
 fn is_step_within_target(reboot_step: &RebootStep, low_target: isize, high_target: isize) -> bool {
