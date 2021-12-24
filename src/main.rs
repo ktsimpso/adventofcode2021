@@ -2,6 +2,7 @@
 #![feature(map_first_last)]
 #![feature(fn_traits)]
 
+mod alu;
 mod amphipod;
 mod beacon_scanner;
 mod binary_diagnostic;
@@ -62,6 +63,7 @@ lazy_static! {
         Box::new(dirac_dice::DIRAC_DICE),
         Box::new(reactor_reboot::REACTOR_REBOOT),
         Box::new(amphipod::AMPHIPOD),
+        Box::new(alu::ALU),
     ];
 }
 
