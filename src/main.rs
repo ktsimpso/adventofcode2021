@@ -2,6 +2,7 @@
 #![feature(map_first_last)]
 #![feature(fn_traits)]
 
+mod amphipod;
 mod beacon_scanner;
 mod binary_diagnostic;
 mod chiton;
@@ -60,6 +61,7 @@ lazy_static! {
         Box::new(trench_map::TRENCH_MAP),
         Box::new(dirac_dice::DIRAC_DICE),
         Box::new(reactor_reboot::REACTOR_REBOOT),
+        Box::new(amphipod::AMPHIPOD),
     ];
 }
 

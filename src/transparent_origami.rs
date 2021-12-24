@@ -50,7 +50,7 @@ fn sub_command() -> App<'static, 'static> {
         "Path to the input file. Input should be newline delimited points followed by fold instructions.",
         "Performs the first fold on the default input then counts the dots.",
         "Performs all folds on the default input then counts the dots.",
-    )    .arg(
+    ).arg(
         Arg::with_name("limit-folds")
             .short("l")
             .help("If passed, only the first fold is preformed."),
