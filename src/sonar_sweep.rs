@@ -1,4 +1,4 @@
-use crate::lib::{default_sub_command, CommandResult, Problem, parse_usize};
+use adventofcode2021::{default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{character::complete::newline, multi::separated_list0, IResult};
 

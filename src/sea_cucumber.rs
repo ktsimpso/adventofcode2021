@@ -1,4 +1,4 @@
-use crate::lib::{default_sub_command, CommandResult, Problem};
+use adventofcode2021::{default_sub_command, CommandResult, Problem};
 use clap::{App, ArgMatches};
 use nom::{
     branch::alt,

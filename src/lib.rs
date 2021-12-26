@@ -160,7 +160,6 @@ pub fn parse_isize(input: &str) -> IResult<&str, isize> {
     )(input)
 }
 
-
 fn usisze_from_string(input: &str) -> Result<usize, Error> {
     usize::from_str_radix(input, 10).map_err(|err| err.into())
 }

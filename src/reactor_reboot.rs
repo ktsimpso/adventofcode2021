@@ -1,4 +1,4 @@
-use crate::lib::{default_sub_command, parse_isize, CommandResult, Problem};
+use adventofcode2021::{default_sub_command, parse_isize, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     branch::alt,

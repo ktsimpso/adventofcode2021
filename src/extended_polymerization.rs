@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use crate::lib::{default_sub_command, CommandResult, Problem};
+use adventofcode2021::{default_sub_command, CommandResult, Problem};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{
     bytes::complete::{tag, take},
@@ -9,6 +8,7 @@ use nom::{
     sequence::separated_pair,
     IResult,
 };
+use std::collections::HashMap;
 
 pub const EXTENDED_POLYMERIZATION: Problem<ExtendedPolymerizationArgs, Polymer<'static>> =
     Problem::new(
@@ -58,7 +58,10 @@ fn parse_arguments(arguments: &ArgMatches) -> ExtendedPolymerizationArgs {
             polymerization_count: 40,
         },
         _ => ExtendedPolymerizationArgs {
-            polymerization_count: value_t_or_exit!(arguments.value_of("polymerization-count"), usize),
+            polymerization_count: value_t_or_exit!(
+                arguments.value_of("polymerization-count"),
+                usize
+            ),
         },
     }
 }

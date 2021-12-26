@@ -14,7 +14,6 @@ mod extended_polymerization;
 mod giant_squid;
 mod hydrothermal_venture;
 mod lanternfish;
-mod lib;
 mod packet_decoder;
 mod passage_pathing;
 mod reactor_reboot;
@@ -33,7 +32,7 @@ use anyhow::Error;
 use clap::{value_t_or_exit, App, AppSettings};
 #[macro_use]
 extern crate lazy_static;
-use lib::Command;
+use adventofcode2021::Command;
 use simple_error::SimpleError;
 use std::{collections::HashMap, time::Instant};
 

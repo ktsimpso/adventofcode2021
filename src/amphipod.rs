@@ -1,6 +1,4 @@
-use std::collections::HashSet;
-
-use crate::lib::{default_sub_command, CommandResult, Problem};
+use adventofcode2021::{default_sub_command, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     branch::alt,
@@ -10,6 +8,7 @@ use nom::{
     sequence::{preceded, tuple},
     IResult,
 };
+use std::collections::HashSet;
 
 pub const AMPHIPOD: Problem<AmphipodArgs, (Vec<Amphipod>, Vec<Amphipod>)> = Problem::new(
     sub_command,

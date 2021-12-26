@@ -1,4 +1,6 @@
-use crate::lib::{absolute_difference, default_sub_command, parse_usize, CommandResult, Problem};
+use adventofcode2021::{
+    absolute_difference, default_sub_command, parse_usize, CommandResult, Problem,
+};
 use clap::{value_t_or_exit, App, Arg, ArgMatches};
 use nom::{bytes::complete::tag, combinator::map, multi::separated_list0, IResult};
 use std::{collections::HashMap, convert::identity};

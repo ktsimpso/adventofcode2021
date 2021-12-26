@@ -1,4 +1,4 @@
-use crate::lib::{default_sub_command, parse_usize, CommandResult, Problem};
+use adventofcode2021::{default_sub_command, parse_usize, CommandResult, Problem};
 use clap::{App, Arg, ArgMatches};
 use nom::{
     bytes::complete::tag, character::complete::newline, combinator::map, multi::separated_list0,
