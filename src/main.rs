@@ -18,6 +18,7 @@ mod lib;
 mod packet_decoder;
 mod passage_pathing;
 mod reactor_reboot;
+mod sea_cucumber;
 mod seven_segment;
 mod smoke_basin;
 mod snailfish;
@@ -64,6 +65,7 @@ lazy_static! {
         Box::new(reactor_reboot::REACTOR_REBOOT),
         Box::new(amphipod::AMPHIPOD),
         Box::new(alu::ALU),
+        Box::new(sea_cucumber::SEA_CUCUMBER),
     ];
 }
 
